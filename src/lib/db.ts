@@ -80,6 +80,18 @@ async function _initSchema() {
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         UNIQUE(family_id, date)
       )`,
+      `CREATE TABLE IF NOT EXISTS card_bills (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        family_id INTEGER REFERENCES families(id),
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        card_name TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        due_date TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_card_bills_family ON card_bills(family_id, year, month)`,
       `CREATE TABLE IF NOT EXISTS property_wishlist (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id),
@@ -314,14 +326,30 @@ export async function joinFamily(inviteCode: string, userId: number) {
     args: [inviteCode],
   });
   if (!r.rows[0]) return null;
-  const familyId = Number(r.rows[0]["id"]);
+  const newFamilyId = Number(r.rows[0]["id"]);
+
   try {
     await client.execute({
       sql: "INSERT INTO family_members (family_id, user_id, role) VALUES (?, ?, 'member')",
-      args: [familyId, userId],
+      args: [newFamilyId, userId],
     });
   } catch { /* already member */ }
-  return familyId;
+
+  // 기존 자산·거래를 새 가족으로 마이그레이션
+  await client.execute({
+    sql: "UPDATE assets SET family_id = ? WHERE user_id = ?",
+    args: [newFamilyId, userId],
+  });
+  await client.execute({
+    sql: "UPDATE transactions SET family_id = ? WHERE user_id = ?",
+    args: [newFamilyId, userId],
+  });
+  await client.execute({
+    sql: "UPDATE goals SET family_id = ? WHERE family_id IN (SELECT id FROM families WHERE owner_id = ?)",
+    args: [newFamilyId, userId],
+  });
+
+  return newFamilyId;
 }
 
 export async function getFamilyMembers(familyId: number) {
@@ -520,6 +548,59 @@ export async function updateGoalAmount(id: number, amount: number) {
   await client.execute({
     sql: "UPDATE goals SET current_amount = ? WHERE id = ?",
     args: [amount, id],
+  });
+}
+
+// ── Card Bills ──
+export async function getCardBills(userId: number, familyId: number | undefined, year: number, month: number) {
+  await ensureInit();
+  let r;
+  if (familyId) {
+    r = await client.execute({
+      sql: `SELECT cb.*, u.name as user_name FROM card_bills cb
+            JOIN users u ON u.id = cb.user_id
+            WHERE cb.family_id = ? AND cb.year = ? AND cb.month = ?
+            ORDER BY cb.user_id, cb.created_at ASC`,
+      args: [familyId, year, month],
+    });
+  } else {
+    r = await client.execute({
+      sql: `SELECT cb.*, u.name as user_name FROM card_bills cb
+            JOIN users u ON u.id = cb.user_id
+            WHERE cb.user_id = ? AND cb.year = ? AND cb.month = ?
+            ORDER BY cb.created_at ASC`,
+      args: [userId, year, month],
+    });
+  }
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    user_name: String(row["user_name"]),
+    year: Number(row["year"]),
+    month: Number(row["month"]),
+    card_name: String(row["card_name"]),
+    amount: Number(row["amount"]),
+    due_date: String(row["due_date"]),
+  }));
+}
+
+export async function insertCardBill(data: {
+  user_id: number; family_id?: number | null;
+  year: number; month: number; card_name: string; amount: number; due_date?: string;
+}) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "INSERT INTO card_bills (user_id, family_id, year, month, card_name, amount, due_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    args: [data.user_id, data.family_id ?? null, data.year, data.month, data.card_name, data.amount, data.due_date ?? ""],
+  });
+  return Number(r.lastInsertRowid);
+}
+
+export async function deleteCardBill(id: number, userId: number) {
+  await ensureInit();
+  await client.execute({
+    sql: "DELETE FROM card_bills WHERE id = ? AND user_id = ?",
+    args: [id, userId],
   });
 }
 

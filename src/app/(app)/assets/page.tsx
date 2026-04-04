@@ -143,17 +143,7 @@ export default function AssetsPage() {
 
   return (
     <div className="min-h-screen bg-toss-surface">
-      <TopBar
-        title="자산 관리"
-        rightAction={
-          <button
-            onClick={openAdd}
-            className="text-sm font-semibold text-toss-blue px-1"
-          >
-            + 추가
-          </button>
-        }
-      />
+      <TopBar title="자산 관리" />
 
       {/* 순자산 요약 */}
       <div className="mx-4 mt-2 mb-3 p-5 bg-white rounded-2xl shadow-sm">
@@ -225,11 +215,14 @@ export default function AssetsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-semibold text-toss-text truncate">{asset.label}</p>
-                    {(asset as { visibility?: string }).visibility === "private" && (
+                    {asset.visibility === "private" && (
                       <span className="text-xs bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">나만</span>
                     )}
                   </div>
-                  <p className="text-xs text-toss-text-ter mt-0.5">{config.label}{asset.institution ? ` · ${asset.institution}` : ""}</p>
+                  <p className="text-xs text-toss-text-ter mt-0.5">
+                    {config.label}{asset.institution ? ` · ${asset.institution}` : ""}
+                    {asset.user_name ? ` · ${asset.user_name}` : ""}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <p className={clsx("text-sm font-bold", isLiability ? "text-toss-red" : "text-toss-text")}>
@@ -257,6 +250,18 @@ export default function AssetsPage() {
             );
           })}
         </div>
+      )}
+
+      {/* 추가 FAB */}
+      {!showForm && (
+        <button
+          onClick={openAdd}
+          className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-toss-blue flex items-center justify-center shadow-lg"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+          </svg>
+        </button>
       )}
 
       {/* 추가/수정 바텀 시트 */}

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
+import { formatKRW } from "@/lib/formatters";
 import { CategoryPicker } from "@/components/spending-form/CategoryPicker";
 import { useSpendingStore } from "@/store/spendingStore";
 import { SpendingCategory, Visibility } from "@/types";
@@ -136,6 +137,24 @@ export default function AddSpendingPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* 하단 저장 버튼 */}
+      <div className="sticky bottom-0 px-5 py-4 bg-white border-t border-toss-border">
+        <button
+          onClick={handleSave}
+          disabled={amount === 0 || saving}
+          className={clsx(
+            "w-full py-4 rounded-2xl font-semibold text-sm transition-colors",
+            amount > 0 && !saving
+              ? type === "expense"
+                ? "bg-toss-red text-white"
+                : "bg-toss-green text-white"
+              : "bg-toss-border text-toss-text-ter"
+          )}
+        >
+          {saving ? "저장 중..." : amount > 0 ? `${formatKRW(amount)} ${type === "expense" ? "지출" : "수입"} 저장` : "금액을 입력해주세요"}
+        </button>
       </div>
     </div>
   );

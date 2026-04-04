@@ -42,7 +42,10 @@ export function AssetBreakdownList() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-toss-text">{asset.label}</p>
-                      <p className="text-xs text-toss-text-ter mt-0.5">{config.label}{asset.institution ? ` · ${asset.institution}` : ""}</p>
+                      <p className="text-xs text-toss-text-ter mt-0.5">
+                        {config.label}{asset.institution ? ` · ${asset.institution}` : ""}
+                        {asset.user_name ? ` · ${asset.user_name}` : ""}
+                      </p>
                     </div>
                   </div>
                   <p className={`text-sm font-semibold ${isLiability ? "text-toss-red" : "text-toss-text"}`}>

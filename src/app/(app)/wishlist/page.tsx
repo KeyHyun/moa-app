@@ -127,14 +127,22 @@ export default function WishlistPage() {
         }
       />
 
-      {/* 안내 배너 */}
-      <div className="mx-4 mt-3 mb-3 px-4 py-3 bg-toss-blue-light rounded-xl flex items-start gap-2.5">
-        <span className="text-base mt-0.5">💡</span>
-        <p className="text-xs text-toss-blue leading-relaxed">
-          네이버 부동산에서 마음에 드는 매물을 찾아 URL을 복사해 저장하세요.
-          찜한 매물을 탭하면 바로 네이버 부동산으로 이동합니다.
-        </p>
-      </div>
+      {/* 네이버 부동산 바로가기 */}
+      <button
+        onClick={() => window.open("https://new.land.naver.com/", "_blank")}
+        className="mx-4 mt-3 mb-3 w-[calc(100%-2rem)] flex items-center justify-between px-4 py-3.5 bg-green-50 rounded-2xl active:bg-green-100 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🏠</span>
+          <div className="text-left">
+            <p className="text-sm font-bold text-green-700">네이버 부동산 열기</p>
+            <p className="text-xs text-green-600 mt-0.5">매물을 찾고 URL을 복사해 찜 목록에 저장하세요</p>
+          </div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M9 18l6-6-6-6" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
 
       {loading ? (
         <div className="px-4 space-y-3">
@@ -285,9 +293,21 @@ export default function WishlistPage() {
                 </div>
               </div>
 
-              {/* 네이버 부동산 URL */}
+              {/* 네이버 부동산 */}
               <div>
-                <p className="text-xs font-semibold text-toss-text-sub mb-2">네이버 부동산 URL <span className="font-normal text-toss-text-ter">(선택)</span></p>
+                <p className="text-xs font-semibold text-toss-text-sub mb-2">네이버 부동산 링크 <span className="font-normal text-toss-text-ter">(선택)</span></p>
+                <button
+                  type="button"
+                  onClick={() => window.open("https://new.land.naver.com/", "_blank")}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-toss-border bg-green-50 text-sm mb-2 active:bg-green-100 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🏠</span>
+                    <span className="font-semibold text-green-700">네이버 부동산 열기</span>
+                  </div>
+                  <span className="text-xs text-green-600">매물 찾기 →</span>
+                </button>
+                <p className="text-xs text-toss-text-ter mb-2">네이버 부동산에서 매물을 찾은 뒤 URL을 복사해 붙여넣기하세요</p>
                 <input type="url" value={form.naver_url}
                   onChange={(e) => setForm((f) => ({ ...f, naver_url: e.target.value }))}
                   placeholder="https://new.land.naver.com/..."

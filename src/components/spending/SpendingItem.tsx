@@ -40,7 +40,9 @@ export function SpendingItem({ item }: SpendingItemProps) {
             >
               {item.category}
             </span>
-            <span className="text-xs text-toss-text-ter">{item.date}</span>
+            {item.user_name && (
+              <span className="text-[10px] text-toss-text-ter">{item.user_name}</span>
+            )}
           </div>
         </div>
       </div>
