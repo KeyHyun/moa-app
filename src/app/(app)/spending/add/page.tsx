@@ -9,7 +9,6 @@ import { SubCategoryPicker } from "@/components/spending-form/SubCategoryPicker"
 import { useSpendingStore } from "@/store/spendingStore";
 import { Visibility } from "@/types";
 import { clsx } from "clsx";
-import { INCOME_CATEGORIES } from "@/lib/constants";
 
 type SpendingType = "expense" | "income";
 
