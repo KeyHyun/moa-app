@@ -188,7 +188,7 @@ export function StatsChart() {
                   ))}
                 </Pie>
                 <Tooltip
-                  formatter={(v: number) => formatKRW(v)}
+                  formatter={(v) => formatKRW(Number(v))}
                   contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid #E5E8EB" }}
                 />
                 <Legend
