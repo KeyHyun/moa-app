@@ -1,13 +1,24 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { PwaRegister } from "@/components/PwaRegister";
 
 export const metadata: Metadata = {
   title: "모아 - 가족 자산 관리",
   description: "가족이 함께 모으고, 함께 관리하는 자산 서비스",
-  icons: {
-    icon: "/icon.svg",
-    apple: "/icon.svg",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "모아",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#3182F6",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
@@ -17,7 +28,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <link rel="apple-touch-icon" href="/apple-icon" />
+      </head>
+      <body>
+        <PwaRegister />
+        {children}
+      </body>
     </html>
   );
 }

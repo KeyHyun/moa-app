@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSpendingStore } from "@/store/spendingStore";
 import { TopBar } from "@/components/layout/TopBar";
@@ -9,6 +9,15 @@ import { CategoryFilterBar } from "@/components/spending/CategoryFilterBar";
 import { SpendingItem } from "@/components/spending/SpendingItem";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { isSameDay, parseLocalDate } from "@/lib/formatters";
+import { clsx } from "clsx";
+
+type SortOrder = "time" | "amount_desc" | "amount_asc";
+
+const SORT_OPTIONS: { value: SortOrder; label: string }[] = [
+  { value: "time", label: "시간순" },
+  { value: "amount_desc", label: "금액↓" },
+  { value: "amount_asc", label: "금액↑" },
+];
 
 export default function SpendingPage() {
   const fetchTransactions = useSpendingStore((s) => s.fetchTransactions);
@@ -18,14 +27,21 @@ export default function SpendingPage() {
   const transactions = useSpendingStore((s) => s.transactions);
   const selectedCategory = useSpendingStore((s) => s.selectedCategory);
   const selectedType = useSpendingStore((s) => s.selectedType);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("time");
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
-  const items = transactions.filter((t) => {
+  const filtered = transactions.filter((t) => {
     if (!isSameDay(parseLocalDate(t.date), selectedDate)) return false;
     if (selectedType !== "all" && t.type !== selectedType) return false;
     if (selectedCategory && t.category !== selectedCategory) return false;
     return true;
+  });
+
+  const items = [...filtered].sort((a, b) => {
+    if (sortOrder === "amount_desc") return b.amount - a.amount;
+    if (sortOrder === "amount_asc") return a.amount - b.amount;
+    return 0; // time: keep DB order (newest first)
   });
 
   return (
@@ -57,6 +73,25 @@ export default function SpendingPage() {
 
         {/* 카테고리 필터 */}
         <CategoryFilterBar />
+
+        {/* 정렬 */}
+        <div className="flex items-center gap-1.5 px-4 py-2 border-t border-toss-border">
+          <span className="text-xs text-toss-text-ter mr-1">정렬</span>
+          {SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setSortOrder(opt.value)}
+              className={clsx(
+                "px-3 py-1 rounded-pill text-xs font-semibold transition-colors",
+                sortOrder === opt.value
+                  ? "bg-toss-blue text-white"
+                  : "bg-toss-surface text-toss-text-sub"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* 거래 추가 FAB */}

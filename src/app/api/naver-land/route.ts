@@ -64,11 +64,15 @@ export async function POST(req: NextRequest) {
     }
 
     const fetchHeaders: HeadersInit = {
-      "Accept": "*/*",
+      "Accept": "application/json, text/plain, */*",
       "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-      "Referer": "https://new.land.naver.com/",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Referer": `https://new.land.naver.com/complexes/${complexNo}`,
       "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      "sec-fetch-dest": "empty",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-site": "same-origin",
     };
 
     // 여러 페이지를 가격순으로 가져오기 (최대 5페이지 = 100개)
@@ -86,11 +90,20 @@ export async function POST(req: NextRequest) {
         `&pageSize=20` +
         `&order=prc`;
 
-      const res = await fetch(apiUrl, { headers: fetchHeaders, next: { revalidate: 0 } });
+      const res = await fetch(apiUrl, { headers: fetchHeaders, cache: "no-store" });
 
       if (!res.ok) {
         // 첫 페이지부터 실패하면 에러 반환
         if (page === 1) {
+          const errBody = await res.text().catch(() => "");
+          console.error(`Naver API ${res.status}:`, errBody.slice(0, 300));
+
+          if (res.status === 403) {
+            return NextResponse.json(
+              { error: "네이버 부동산 접근이 차단되었습니다. 잠시 후 다시 시도하거나 네이버에서 직접 확인해주세요." },
+              { status: 502 }
+            );
+          }
           return NextResponse.json(
             { error: `네이버 부동산 API 요청 실패 (${res.status}). 잠시 후 다시 시도해주세요.` },
             { status: 502 }
@@ -99,12 +112,31 @@ export async function POST(req: NextRequest) {
         break;
       }
 
+      // 응답이 JSON인지 확인
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("json")) {
+        if (page === 1) {
+          console.error("Naver API returned non-JSON:", contentType);
+          return NextResponse.json(
+            { error: "네이버 부동산이 봇 차단 응답을 반환했습니다. 잠시 후 다시 시도해주세요." },
+            { status: 502 }
+          );
+        }
+        break;
+      }
+
       const data = await res.json();
-      const articles: NaverArticle[] = data.body ?? data.articleList ?? [];
+      // 여러 응답 구조 대응
+      const articles: NaverArticle[] =
+        data.body?.list ??
+        data.body ??
+        data.articleList ??
+        data.list ??
+        [];
 
       if (page === 1) {
-        totalCount = data.totalCount ?? 0;
-        complexName = data.complexName ?? "";
+        totalCount = data.totalCount ?? data.body?.totalCount ?? 0;
+        complexName = data.complexName ?? data.body?.complexName ?? "";
       }
 
       if (articles.length === 0) break;
