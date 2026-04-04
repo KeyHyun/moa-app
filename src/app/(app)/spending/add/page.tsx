@@ -85,8 +85,6 @@ export default function AddSpendingPage() {
     }
   };
 
-  const cardTypeLabel = (t: string) => CARD_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t;
-
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <TopBar showBack title={type === "expense" ? "지출 추가" : "수입 추가"} />
