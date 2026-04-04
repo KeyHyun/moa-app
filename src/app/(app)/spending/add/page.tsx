@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
-import { AmountKeypad } from "@/components/spending-form/AmountKeypad";
 import { CategoryPicker } from "@/components/spending-form/CategoryPicker";
 import { useSpendingStore } from "@/store/spendingStore";
 import { SpendingCategory } from "@/types";
@@ -15,39 +14,13 @@ export default function AddSpendingPage() {
   const router = useRouter();
   const addTransaction = useSpendingStore((s) => s.addTransaction);
 
-  const [amountStr, setAmountStr] = useState("0");
+  const [amountStr, setAmountStr] = useState("");
   const [category, setCategory] = useState<SpendingCategory>("식비");
   const [type, setType] = useState<SpendingType>("expense");
   const [memo, setMemo] = useState("");
-  const [keypadOpen, setKeypadOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const memoRef = useRef<HTMLInputElement>(null);
 
-  const amount = parseInt(amountStr.replace(/,/g, ""), 10) || 0;
-
-  const handleKeyPress = (key: string) => {
-    if (key === "지우기") {
-      setAmountStr((prev) => {
-        const raw = prev.replace(/,/g, "");
-        if (raw.length <= 1) return "0";
-        return formatAmount(raw.slice(0, -1));
-      });
-    } else {
-      setAmountStr((prev) => {
-        const raw = prev.replace(/,/g, "");
-        const append = key === "00" ? "00" : key;
-        if (raw === "0") return append === "00" ? "0" : formatAmount(append);
-        if (raw.length >= 9) return prev;
-        return formatAmount(raw + append);
-      });
-    }
-  };
-
-  function formatAmount(raw: string): string {
-    const num = parseInt(raw, 10);
-    if (isNaN(num)) return "0";
-    return num.toLocaleString("ko-KR");
-  }
+  const amount = parseInt(amountStr, 10) || 0;
 
   const handleSave = async () => {
     if (amount === 0 || saving) return;
@@ -60,11 +33,6 @@ export default function AddSpendingPage() {
     } catch {
       setSaving(false);
     }
-  };
-
-  const toggleKeypad = () => {
-    memoRef.current?.blur();
-    setKeypadOpen((prev) => !prev);
   };
 
   return (
@@ -110,26 +78,25 @@ export default function AddSpendingPage() {
 
       <div className="flex-1 overflow-y-auto px-5 pt-6 pb-4">
         {/* 금액 */}
-        <button onClick={toggleKeypad} className="w-full text-left mb-6">
+        <div className="mb-6">
           <p className="text-xs font-semibold text-toss-text-sub mb-1">금액</p>
-          <div
-            className={clsx(
-              "flex items-baseline gap-2 pb-2 border-b-2 transition-colors",
-              keypadOpen ? "border-toss-blue" : "border-toss-border"
-            )}
-          >
-            <span
-              className="text-4xl font-bold"
+          <div className="flex items-baseline gap-2 pb-2 border-b-2 border-toss-border focus-within:border-toss-blue transition-colors">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={amountStr}
+              onChange={(e) => setAmountStr(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="0"
+              className="flex-1 text-4xl font-bold bg-transparent outline-none placeholder:text-toss-border"
               style={{ color: type === "expense" ? "#F04452" : "#2DB400" }}
-            >
-              {amountStr}
-            </span>
+            />
             <span className="text-xl font-medium text-toss-text-sub">원</span>
-            {!keypadOpen && (
-              <span className="ml-auto text-xs text-toss-blue font-medium">탭하여 입력</span>
-            )}
           </div>
-        </button>
+          {amount > 0 && (
+            <p className="text-xs text-toss-blue mt-1.5 pl-1">{amount.toLocaleString("ko-KR")}원</p>
+          )}
+        </div>
 
         {/* 카테고리 */}
         <div className="mb-5">
@@ -141,26 +108,14 @@ export default function AddSpendingPage() {
         <div>
           <p className="text-xs font-semibold text-toss-text-sub mb-2">메모</p>
           <input
-            ref={memoRef}
             type="text"
             value={memo}
             onChange={(e) => setMemo(e.target.value)}
-            onFocus={() => setKeypadOpen(false)}
             placeholder={`어디서 ${type === "expense" ? "쓰셨나요" : "받으셨나요"}?`}
             className="w-full px-4 py-3 rounded-input border border-toss-border text-sm text-toss-text placeholder:text-toss-text-ter outline-none focus:border-toss-blue transition-colors"
             maxLength={50}
           />
         </div>
-      </div>
-
-      {/* 키패드 */}
-      <div
-        className={clsx(
-          "border-t border-toss-border transition-all duration-300 overflow-hidden",
-          keypadOpen ? "max-h-[280px]" : "max-h-0 border-t-0"
-        )}
-      >
-        <AmountKeypad onPress={handleKeyPress} />
       </div>
     </div>
   );

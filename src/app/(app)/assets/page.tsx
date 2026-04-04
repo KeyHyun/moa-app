@@ -249,9 +249,11 @@ export default function AssetsPage() {
                 <div>
                   <p className="text-xs font-semibold text-toss-text-sub mb-2">금액 (원)</p>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={form.amount}
-                    onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value.replace(/[^0-9]/g, "") }))}
                     placeholder="예: 5000000"
                     className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm text-toss-text placeholder:text-toss-text-ter outline-none focus:border-toss-blue transition-colors"
                   />
