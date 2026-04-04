@@ -160,6 +160,9 @@ async function _initSchema() {
     "ALTER TABLE property_wishlist ADD COLUMN max_price INTEGER",
     "ALTER TABLE property_wishlist ADD COLUMN min_area REAL",
     "ALTER TABLE property_wishlist ADD COLUMN max_area REAL",
+    "ALTER TABLE property_wishlist ADD COLUMN naver_complex_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE property_wishlist ADD COLUMN floor_min INTEGER",
+    "ALTER TABLE property_wishlist ADD COLUMN floor_max INTEGER",
   ];
   for (const sql of migrations) {
     try {
@@ -745,6 +748,9 @@ export async function getPropertyWishlist(userId: number, familyId?: number) {
     max_price: row["max_price"] != null ? Number(row["max_price"]) : null,
     min_area: row["min_area"] != null ? Number(row["min_area"]) : null,
     max_area: row["max_area"] != null ? Number(row["max_area"]) : null,
+    naver_complex_url: String(row["naver_complex_url"] ?? ""),
+    floor_min: row["floor_min"] != null ? Number(row["floor_min"]) : null,
+    floor_max: row["floor_max"] != null ? Number(row["floor_max"]) : null,
     notes: String(row["notes"]),
     visibility: String(row["visibility"]),
     created_at: String(row["created_at"]),
@@ -757,12 +763,14 @@ export async function insertPropertyWishlist(data: {
   property_type: string; trade_type: string;
   min_price?: number | null; max_price?: number | null;
   min_area?: number | null; max_area?: number | null;
+  naver_complex_url?: string;
+  floor_min?: number | null; floor_max?: number | null;
   notes: string; visibility: string;
 }) {
   await ensureInit();
   const r = await client.execute({
-    sql: "INSERT INTO property_wishlist (user_id, family_id, name, location, property_type, trade_type, min_price, max_price, min_area, max_area, notes, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [data.user_id, data.family_id ?? null, data.name, data.location, data.property_type, data.trade_type, data.min_price ?? null, data.max_price ?? null, data.min_area ?? null, data.max_area ?? null, data.notes, data.visibility],
+    sql: "INSERT INTO property_wishlist (user_id, family_id, name, location, property_type, trade_type, min_price, max_price, min_area, max_area, naver_complex_url, floor_min, floor_max, notes, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [data.user_id, data.family_id ?? null, data.name, data.location, data.property_type, data.trade_type, data.min_price ?? null, data.max_price ?? null, data.min_area ?? null, data.max_area ?? null, data.naver_complex_url ?? "", data.floor_min ?? null, data.floor_max ?? null, data.notes, data.visibility],
   });
   return Number(r.lastInsertRowid);
 }
