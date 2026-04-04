@@ -5,6 +5,7 @@ import { SpendingCategory } from "@/types";
 
 export interface Transaction {
   id: number;
+  user_id?: number;
   type: "income" | "expense";
   category: string;
   amount: number;
@@ -22,7 +23,8 @@ interface SpendingState {
   selectedCategory: SpendingCategory | null;
   isLoading: boolean;
   fetchTransactions: () => Promise<void>;
-  addTransaction: (data: Omit<Transaction, "id" | "user_name">) => Promise<void>;
+  addTransaction: (data: Omit<Transaction, "id" | "user_name" | "user_id">) => Promise<void>;
+  updateTransaction: (id: number, data: Omit<Transaction, "id" | "user_name" | "user_id">) => Promise<void>;
   deleteTransaction: (id: number) => Promise<void>;
   setSelectedDate: (date: Date) => void;
   setSelectedCategory: (cat: SpendingCategory | null) => void;
@@ -56,6 +58,19 @@ export const useSpendingStore = create<SpendingState>()((set, get) => ({
     if (!res.ok) {
       const err = await res.json();
       throw new Error(err.error || "저장에 실패했습니다.");
+    }
+    await get().fetchTransactions();
+  },
+
+  updateTransaction: async (id, data) => {
+    const res = await fetch("/api/transactions", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, ...data }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "수정에 실패했습니다.");
     }
     await get().fetchTransactions();
   },

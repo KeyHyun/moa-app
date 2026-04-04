@@ -34,9 +34,9 @@ export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
               onClick={() => { onChange(cat); setShowCustom(false); }}
               className={clsx(
                 "flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all",
-                isSelected ? "ring-2" : "bg-toss-surface hover:bg-toss-border"
+                isSelected ? "" : "bg-toss-surface hover:bg-toss-border"
               )}
-              style={isSelected ? { backgroundColor: config.bg, ringColor: config.color } : {}}
+              style={isSelected ? { backgroundColor: config.bg, outline: `2px solid ${config.color}`, outlineOffset: "-1px" } : {}}
             >
               <span className="text-2xl">{config.icon}</span>
               <span

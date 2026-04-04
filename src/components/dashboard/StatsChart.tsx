@@ -7,10 +7,12 @@ import {
 } from "recharts";
 import { useSpendingStore, Transaction } from "@/store/spendingStore";
 import { useAssetStore } from "@/store/assetStore";
+import { useAuthStore } from "@/store/authStore";
 import { formatKRW } from "@/lib/formatters";
 import { ASSET_TYPE_CONFIG } from "@/lib/constants";
 
 type Period = "일" | "월" | "년";
+type ViewMode = "전체" | "내꺼만" | "공유만";
 
 const ASSET_COLORS = ["#3182F6", "#2DB400", "#FF8C00", "#EC4899", "#8B5CF6"];
 
@@ -90,8 +92,16 @@ function CustomTooltip({ active, payload, label }: {
 /* ── 메인 컴포넌트 ── */
 export function StatsChart() {
   const [period, setPeriod] = useState<Period>("월");
-  const transactions = useSpendingStore((s) => s.transactions);
+  const [viewMode, setViewMode] = useState<ViewMode>("전체");
+  const allTransactions = useSpendingStore((s) => s.transactions);
   const assets = useAssetStore((s) => s.assets);
+  const currentUser = useAuthStore((s) => s.user);
+
+  const transactions = useMemo(() => {
+    if (viewMode === "내꺼만") return allTransactions.filter((t) => t.user_id === currentUser?.id);
+    if (viewMode === "공유만") return allTransactions.filter((t) => t.visibility === "family");
+    return allTransactions;
+  }, [allTransactions, viewMode, currentUser]);
 
   const barData = useMemo(() => groupTransactions(transactions, period), [transactions, period]);
 
@@ -108,7 +118,7 @@ export function StatsChart() {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-      {/* 탭 */}
+      {/* 기간 탭 */}
       <div className="flex border-b border-toss-border">
         {(["일", "월", "년"] as Period[]).map((p) => (
           <button
@@ -121,6 +131,21 @@ export function StatsChart() {
             }`}
           >
             {p}별
+          </button>
+        ))}
+      </div>
+
+      {/* 보기 모드 */}
+      <div className="flex gap-1.5 px-4 pt-3">
+        {(["전체", "내꺼만", "공유만"] as ViewMode[]).map((v) => (
+          <button
+            key={v}
+            onClick={() => setViewMode(v)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              viewMode === v ? "bg-toss-blue text-white" : "bg-toss-surface text-toss-text-sub"
+            }`}
+          >
+            {v}
           </button>
         ))}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatKRW } from "@/lib/formatters";
 import { CategoryPicker } from "@/components/spending-form/CategoryPicker";
@@ -26,15 +26,26 @@ const CARD_TYPE_OPTIONS = [
   { value: "cash",   label: "현금" },
 ];
 
-export default function AddSpendingPage() {
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function AddSpendingInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get("id");
+
   const addTransaction = useSpendingStore((s) => s.addTransaction);
+  const updateTransaction = useSpendingStore((s) => s.updateTransaction);
+  const transactions = useSpendingStore((s) => s.transactions);
 
   const [amountStr, setAmountStr] = useState("");
   const [category, setCategory] = useState<string>("식비");
   const [subCategory, setSubCategory] = useState<string>("");
   const [type, setType] = useState<SpendingType>("expense");
   const [memo, setMemo] = useState("");
+  const [date, setDate] = useState(todayStr());
   const [visibility, setVisibility] = useState<Visibility>("family");
   const [saving, setSaving] = useState(false);
 
@@ -46,7 +57,25 @@ export default function AddSpendingPage() {
   const [newCardType, setNewCardType] = useState("credit");
   const [addingCard, setAddingCard] = useState(false);
 
+  const isEdit = Boolean(editId);
   const amount = parseInt(amountStr, 10) || 0;
+
+  // 수정 모드일 때 기존 데이터 로드
+  useEffect(() => {
+    if (editId) {
+      const tx = transactions.find((t) => t.id === Number(editId));
+      if (tx) {
+        setAmountStr(String(tx.amount));
+        setCategory(tx.category);
+        setSubCategory(tx.sub_category || "");
+        setType(tx.type as SpendingType);
+        setMemo(tx.memo || "");
+        setDate(tx.date);
+        setVisibility((tx.visibility as Visibility) || "family");
+        setSelectedCard(tx.card_name || "");
+      }
+    }
+  }, [editId, transactions]);
 
   useEffect(() => {
     fetch("/api/cards").then((r) => r.json()).then((d) => setCards(d.cards || []));
@@ -78,9 +107,12 @@ export default function AddSpendingPage() {
     if (amount === 0 || saving) return;
     setSaving(true);
     try {
-      const d = new Date();
-      const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      await addTransaction({ type, category, amount, memo, date: today, visibility, card_name: selectedCard, sub_category: subCategory });
+      const payload = { type, category, amount, memo, date, visibility, card_name: selectedCard, sub_category: subCategory };
+      if (isEdit && editId) {
+        await updateTransaction(Number(editId), payload);
+      } else {
+        await addTransaction(payload);
+      }
       router.back();
     } catch {
       setSaving(false);
@@ -89,27 +121,29 @@ export default function AddSpendingPage() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <TopBar showBack title={type === "expense" ? "지출 추가" : "수입 추가"} />
+      <TopBar showBack title={isEdit ? "거래 수정" : type === "expense" ? "지출 추가" : "수입 추가"} />
 
       {/* Type toggle */}
-      <div className="flex mx-5 mt-3 bg-toss-surface rounded-pill p-1">
-        {(["expense", "income"] as SpendingType[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setType(t)}
-            className={clsx(
-              "flex-1 py-2 text-sm font-semibold rounded-pill transition-all",
-              type === t
-                ? t === "expense" ? "bg-toss-red text-white shadow-sm" : "bg-toss-green text-white shadow-sm"
-                : "text-toss-text-sub"
-            )}
-          >
-            {t === "expense" ? "지출" : "수입"}
-          </button>
-        ))}
-      </div>
+      {!isEdit && (
+        <div className="flex mx-5 mt-3 bg-toss-surface rounded-pill p-1">
+          {(["expense", "income"] as SpendingType[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              className={clsx(
+                "flex-1 py-2 text-sm font-semibold rounded-pill transition-all",
+                type === t
+                  ? t === "expense" ? "bg-toss-red text-white shadow-sm" : "bg-toss-green text-white shadow-sm"
+                  : "text-toss-text-sub"
+              )}
+            >
+              {t === "expense" ? "지출" : "수입"}
+            </button>
+          ))}
+        </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-4 space-y-5">
+      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-32 space-y-5">
         {/* 금액 */}
         <div>
           <p className="text-xs font-semibold text-toss-text-sub mb-1">금액</p>
@@ -129,6 +163,18 @@ export default function AddSpendingPage() {
           {amount > 0 && (
             <p className="text-xs text-toss-blue mt-1.5 pl-1">{amount.toLocaleString("ko-KR")}원</p>
           )}
+        </div>
+
+        {/* 날짜 */}
+        <div>
+          <p className="text-xs font-semibold text-toss-text-sub mb-2">날짜</p>
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            max={todayStr()}
+            className="w-full px-4 py-3 rounded-input border border-toss-border text-sm text-toss-text outline-none focus:border-toss-blue transition-colors"
+          />
         </div>
 
         {/* 카테고리 */}
@@ -201,7 +247,6 @@ export default function AddSpendingPage() {
 
             {/* 카드 목록 */}
             <div className="flex flex-wrap gap-2">
-              {/* 선택 안 함 */}
               <button
                 onClick={() => setSelectedCard("")}
                 className={clsx("flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors", {
@@ -211,7 +256,6 @@ export default function AddSpendingPage() {
               >
                 선택 안 함
               </button>
-
               {cards.map((card) => (
                 <button
                   key={card.id}
@@ -231,9 +275,7 @@ export default function AddSpendingPage() {
             </div>
 
             {selectedCard && (
-              <p className="text-xs text-toss-blue mt-2 pl-1">
-                💳 {selectedCard} 사용
-              </p>
+              <p className="text-xs text-toss-blue mt-2 pl-1">💳 {selectedCard} 사용</p>
             )}
           </div>
         )}
@@ -283,9 +325,21 @@ export default function AddSpendingPage() {
               : "bg-toss-border text-toss-text-ter"
           )}
         >
-          {saving ? "저장 중..." : amount > 0 ? `${formatKRW(amount)} ${type === "expense" ? "지출" : "수입"} 저장` : "금액을 입력해주세요"}
+          {saving
+            ? "저장 중..."
+            : amount > 0
+              ? `${formatKRW(amount)} ${isEdit ? "수정 완료" : type === "expense" ? "지출 저장" : "수입 저장"}`
+              : "금액을 입력해주세요"}
         </button>
       </div>
     </div>
+  );
+}
+
+export default function AddSpendingPage() {
+  return (
+    <Suspense>
+      <AddSpendingInner />
+    </Suspense>
   );
 }

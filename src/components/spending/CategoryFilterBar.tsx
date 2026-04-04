@@ -10,7 +10,11 @@ export function CategoryFilterBar() {
   const setSelectedCategory = useSpendingStore((s) => s.setSelectedCategory);
 
   return (
-    <div className="flex items-center gap-2 px-4 py-3 overflow-x-auto no-scrollbar bg-white border-b border-toss-border">
+    <div
+      className="flex items-center gap-2 px-4 py-3 overflow-x-auto no-scrollbar bg-white border-b border-toss-border"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      style={{ WebkitOverflowScrolling: "touch" } as any}
+    >
       <button
         onClick={() => setSelectedCategory(null)}
         className={clsx(

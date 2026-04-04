@@ -443,6 +443,30 @@ export async function insertTransaction(data: {
   return Number(r.lastInsertRowid);
 }
 
+export async function updateTransaction(id: number, userId: number, familyId: number | undefined, data: Partial<{
+  type: string; category: string; amount: number; memo: string; date: string;
+  visibility: string; card_name: string; sub_category: string;
+}>) {
+  await ensureInit();
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+  if (data.type !== undefined)         { sets.push("type = ?");         args.push(data.type); }
+  if (data.category !== undefined)     { sets.push("category = ?");     args.push(data.category); }
+  if (data.amount !== undefined)       { sets.push("amount = ?");       args.push(data.amount); }
+  if (data.memo !== undefined)         { sets.push("memo = ?");         args.push(data.memo); }
+  if (data.date !== undefined)         { sets.push("date = ?");         args.push(data.date); }
+  if (data.visibility !== undefined)   { sets.push("visibility = ?");   args.push(data.visibility); }
+  if (data.card_name !== undefined)    { sets.push("card_name = ?");    args.push(data.card_name); }
+  if (data.sub_category !== undefined) { sets.push("sub_category = ?"); args.push(data.sub_category); }
+  if (sets.length === 0) return;
+  // Owner can always update; family members can update shared transactions
+  const cond = familyId
+    ? "(id = ? AND (user_id = ? OR (family_id = ? AND visibility = 'family')))"
+    : "(id = ? AND user_id = ?)";
+  const condArgs = familyId ? [id, userId, familyId] : [id, userId];
+  await client.execute({ sql: `UPDATE transactions SET ${sets.join(", ")} WHERE ${cond}`, args: [...args, ...condArgs] });
+}
+
 export async function deleteTransaction(id: number, userId: number) {
   await ensureInit();
   await client.execute({

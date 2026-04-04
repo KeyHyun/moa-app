@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseToken } from "@/lib/auth";
-import { getTransactions, insertTransaction, deleteTransaction, getFamilyByUser } from "@/lib/db";
+import { getTransactions, insertTransaction, updateTransaction, deleteTransaction, getFamilyByUser } from "@/lib/db";
 
 function getUserId(req: NextRequest): number | null {
   const token = req.cookies.get("token")?.value;
@@ -38,6 +38,26 @@ export async function POST(req: NextRequest) {
     sub_category: sub_category || "",
   });
   return NextResponse.json({ ok: true, id });
+}
+
+export async function PATCH(req: NextRequest) {
+  const userId = getUserId(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const body = await req.json();
+  const { id, type, category, amount, memo, date, visibility, card_name, sub_category } = body;
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
+  const family = await getFamilyByUser(userId);
+  await updateTransaction(Number(id), userId, family?.id, {
+    ...(type !== undefined && { type }),
+    ...(category !== undefined && { category }),
+    ...(amount !== undefined && { amount: Number(amount) }),
+    ...(memo !== undefined && { memo }),
+    ...(date !== undefined && { date }),
+    ...(visibility !== undefined && { visibility }),
+    ...(card_name !== undefined && { card_name }),
+    ...(sub_category !== undefined && { sub_category }),
+  });
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest) {
