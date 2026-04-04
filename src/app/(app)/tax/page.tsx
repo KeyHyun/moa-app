@@ -86,7 +86,6 @@ function calcTax(data: SalaryData): TaxResult {
 
   // 추천 메시지
   let recommendation = "";
-  const remainCredit = minSpending - data.credit_card_spending;
   const needMore = minSpending - totalSpending;
 
   if (totalSpending <= minSpending) {
@@ -95,7 +94,6 @@ function calcTax(data: SalaryData): TaxResult {
     // 같은 지출에서 체크카드 vs 신용카드 비교
     const currentSaving = taxSaving;
     const ifAllDebit = Math.min(totalSpending * 0.30, bonusMax) * 0.165;
-    const ifAllCredit = Math.min(totalSpending * 0.15, maxDeduction) * 0.165;
 
     if (data.credit_card_spending > data.debit_card_spending + data.cash_spending) {
       const diff = ifAllDebit - currentSaving;
@@ -152,7 +150,7 @@ export default function TaxPage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [year]);
+  useEffect(() => { fetchData(); }, [year]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     setSaving(true);

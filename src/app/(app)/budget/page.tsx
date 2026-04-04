@@ -39,7 +39,7 @@ export default function BudgetPage() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [year, month]);
+  useEffect(() => { fetchData(); }, [year, month]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSaveBudget = async () => {
     const amount = parseInt(budgetInput, 10);
@@ -74,7 +74,6 @@ export default function BudgetPage() {
     // 오늘까지 사용했어야 할 이상적인 금액
     const idealSpent = (budget / daysInMonth) * today;
     const isOnTrack = spent <= idealSpent;
-    const percentUsed = (spent / budget) * 100;
     const percentAfter = (afterPurchase / budget) * 100;
 
     if (afterPurchase > budget) {

@@ -21,7 +21,7 @@ interface FamilyData {
 
 export default function FamilyPage() {
   const router = useRouter();
-  const { user, family, setFamily } = useAuthStore();
+  const { user, setFamily } = useAuthStore();
   const [data, setData] = useState<FamilyData>({ family: null, members: [] });
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
