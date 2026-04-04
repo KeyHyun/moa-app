@@ -27,7 +27,7 @@ export interface AssetItem {
   deltaAmount: number;
   deltaPercent: number;
   institution: string;
-  visibility: Visibility;
+  visibility?: Visibility;
   user_id?: number;
   user_name?: string;
 }
