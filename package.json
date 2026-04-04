@@ -9,6 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
+    "@capacitor/ios": "^8.3.0",
     "@hookform/resolvers": "^5.2.2",
     "@libsql/client": "^0.17.2",
     "@types/bcryptjs": "^2.4.6",
