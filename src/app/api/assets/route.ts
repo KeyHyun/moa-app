@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { type, label, amount, institution } = await req.json();
+  const { type, label, amount, institution, visibility } = await req.json();
   if (!type || !label || amount == null)
     return NextResponse.json({ error: "필수 항목이 누락됐습니다." }, { status: 400 });
   const family = await getFamilyByUser(userId);
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
     label,
     amount: Number(amount),
     institution: institution || "",
+    visibility: visibility || "family",
   });
   await recordSnapshot(userId);
   return NextResponse.json({ ok: true, id });
@@ -46,8 +47,8 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id, amount, label, institution } = await req.json();
-  await updateAsset(Number(id), userId, { amount: Number(amount), label, institution });
+  const { id, amount, label, institution, visibility } = await req.json();
+  await updateAsset(Number(id), userId, { amount: Number(amount), label, institution, visibility });
   await recordSnapshot(userId);
   return NextResponse.json({ ok: true });
 }

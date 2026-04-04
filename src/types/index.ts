@@ -7,7 +7,17 @@ export interface User {
   createdAt: string;
 }
 
-export type AssetType = "cash" | "savings" | "installment" | "investment" | "realEstate";
+export type AssetType =
+  | "cash"
+  | "savings"
+  | "installment"
+  | "investment"
+  | "realEstate"
+  | "loan"
+  | "mortgage"
+  | "creditLoan";
+
+export type Visibility = "family" | "private";
 
 export interface AssetItem {
   id: string;
@@ -17,6 +27,9 @@ export interface AssetItem {
   deltaAmount: number;
   deltaPercent: number;
   institution: string;
+  visibility: Visibility;
+  user_id?: number;
+  user_name?: string;
 }
 
 export interface TrendPoint {
@@ -44,6 +57,7 @@ export interface SpendingItem {
   type: SpendingType;
   datetime: string;
   memo?: string;
+  visibility?: Visibility;
 }
 
 export interface RegisterPayload {
@@ -52,4 +66,40 @@ export interface RegisterPayload {
   email: string;
   phone: string;
   password: string;
+}
+
+export interface PropertyWishlist {
+  id: number;
+  user_id: number;
+  family_id: number | null;
+  name: string;
+  address: string;
+  price: number | null;
+  property_type: string;
+  area: number | null;
+  floor: string;
+  naver_url: string;
+  notes: string;
+  visibility: Visibility;
+  created_at: string;
+}
+
+export interface MonthlyBudget {
+  id: number;
+  user_id: number;
+  year: number;
+  month: number;
+  budget_amount: number;
+}
+
+export interface SalaryInfo {
+  id: number;
+  user_id: number;
+  year: number;
+  annual_salary: number;
+  credit_card_spending: number;
+  debit_card_spending: number;
+  cash_spending: number;
+  transit_spending: number;
+  traditional_market_spending: number;
 }

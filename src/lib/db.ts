@@ -3,8 +3,6 @@ import path from "path";
 import bcrypt from "bcryptjs";
 
 // ── 클라이언트 ──
-// 로컬: file: URL (SQLite 파일)
-// 프로덕션: TURSO_DATABASE_URL (libsql://...turso.io)
 function makeClient(): Client {
   const url =
     process.env.TURSO_DATABASE_URL ??
@@ -50,6 +48,7 @@ async function _initSchema() {
         amount INTEGER NOT NULL,
         memo TEXT NOT NULL DEFAULT '',
         date TEXT NOT NULL,
+        visibility TEXT NOT NULL DEFAULT 'family',
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
       )`,
       `CREATE TABLE IF NOT EXISTS assets (
@@ -60,6 +59,7 @@ async function _initSchema() {
         label TEXT NOT NULL,
         amount INTEGER NOT NULL,
         institution TEXT NOT NULL DEFAULT '',
+        visibility TEXT NOT NULL DEFAULT 'family',
         updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
       )`,
       `CREATE TABLE IF NOT EXISTS goals (
@@ -80,6 +80,45 @@ async function _initSchema() {
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         UNIQUE(family_id, date)
       )`,
+      `CREATE TABLE IF NOT EXISTS property_wishlist (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        family_id INTEGER REFERENCES families(id),
+        name TEXT NOT NULL,
+        address TEXT NOT NULL DEFAULT '',
+        price INTEGER,
+        property_type TEXT NOT NULL DEFAULT 'apartment',
+        area REAL,
+        floor TEXT NOT NULL DEFAULT '',
+        naver_url TEXT NOT NULL DEFAULT '',
+        notes TEXT NOT NULL DEFAULT '',
+        visibility TEXT NOT NULL DEFAULT 'family',
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS monthly_budgets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        family_id INTEGER REFERENCES families(id),
+        year INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        budget_amount INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        UNIQUE(user_id, year, month)
+      )`,
+      `CREATE TABLE IF NOT EXISTS salary_info (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        family_id INTEGER REFERENCES families(id),
+        year INTEGER NOT NULL,
+        annual_salary INTEGER NOT NULL DEFAULT 0,
+        credit_card_spending INTEGER NOT NULL DEFAULT 0,
+        debit_card_spending INTEGER NOT NULL DEFAULT 0,
+        cash_spending INTEGER NOT NULL DEFAULT 0,
+        transit_spending INTEGER NOT NULL DEFAULT 0,
+        traditional_market_spending INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        UNIQUE(user_id, year)
+      )`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_family ON transactions(family_id)`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
@@ -87,6 +126,17 @@ async function _initSchema() {
     ],
     "write"
   );
+
+  // 기존 테이블에 신규 컬럼 추가 (이미 있으면 무시)
+  const migrations = [
+    "ALTER TABLE transactions ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
+    "ALTER TABLE assets ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
+  ];
+  for (const sql of migrations) {
+    try {
+      await client.execute(sql);
+    } catch { /* column already exists */ }
+  }
 
   const r = await client.execute("SELECT COUNT(*) as c FROM users");
   if (Number(r.rows[0]["c"]) === 0) await _seed();
@@ -130,6 +180,7 @@ async function _seed() {
     [familyId, userId, "investment",  "삼성증권 주식",      18420000, "삼성증권"],
     [familyId, userId, "realEstate",  "아파트 (시세)",     450000000, "KB시세"],
     [familyId, userId, "cash",        "현금 및 입출금",      3200000, ""],
+    [familyId, userId, "mortgage",    "주택담보대출",      -200000000, "국민은행"],
   ];
   for (const a of assetRows) {
     await client.execute({
@@ -291,14 +342,27 @@ export async function getFamilyMembers(familyId: number) {
 }
 
 // ── Transactions ──
-export async function getTransactions(userId: number, familyId?: number, limit = 100) {
+export async function getTransactions(userId: number, familyId?: number, limit = 100, viewMode: "family" | "private" | "all" = "all") {
   await ensureInit();
   let r;
   if (familyId) {
-    r = await client.execute({
-      sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
-      args: [familyId, limit],
-    });
+    if (viewMode === "private") {
+      r = await client.execute({
+        sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND t.user_id = ? AND t.visibility = 'private' ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
+        args: [familyId, userId, limit],
+      });
+    } else if (viewMode === "family") {
+      r = await client.execute({
+        sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND t.visibility = 'family' ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
+        args: [familyId, limit],
+      });
+    } else {
+      // all: family-shared + my private
+      r = await client.execute({
+        sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND (t.visibility = 'family' OR t.user_id = ?) ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
+        args: [familyId, userId, limit],
+      });
+    }
   } else {
     r = await client.execute({
       sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.user_id = ? ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
@@ -315,17 +379,19 @@ export async function getTransactions(userId: number, familyId?: number, limit =
     memo: String(row["memo"]),
     date: String(row["date"]),
     user_name: String(row["user_name"]),
+    visibility: String(row["visibility"] ?? "family"),
   }));
 }
 
 export async function insertTransaction(data: {
   family_id?: number; user_id: number; type: string;
   category: string; amount: number; memo: string; date: string;
+  visibility?: string;
 }) {
   await ensureInit();
   const r = await client.execute({
-    sql: "INSERT INTO transactions (family_id, user_id, type, category, amount, memo, date) VALUES (?, ?, ?, ?, ?, ?, ?)",
-    args: [data.family_id ?? null, data.user_id, data.type, data.category, data.amount, data.memo, data.date],
+    sql: "INSERT INTO transactions (family_id, user_id, type, category, amount, memo, date, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [data.family_id ?? null, data.user_id, data.type, data.category, data.amount, data.memo, data.date, data.visibility ?? "family"],
   });
   return Number(r.lastInsertRowid);
 }
@@ -339,17 +405,29 @@ export async function deleteTransaction(id: number, userId: number) {
 }
 
 // ── Assets ──
-export async function getAssets(familyId?: number, userId?: number) {
+export async function getAssets(familyId?: number, userId?: number, viewMode: "family" | "private" | "all" = "all") {
   await ensureInit();
   let r;
   if (familyId) {
-    r = await client.execute({
-      sql: "SELECT * FROM assets WHERE family_id = ? ORDER BY amount DESC",
-      args: [familyId],
-    });
+    if (viewMode === "private") {
+      r = await client.execute({
+        sql: "SELECT a.*, u.name as user_name FROM assets a JOIN users u ON u.id = a.user_id WHERE a.family_id = ? AND a.user_id = ? AND a.visibility = 'private' ORDER BY ABS(a.amount) DESC",
+        args: [familyId, userId!],
+      });
+    } else if (viewMode === "family") {
+      r = await client.execute({
+        sql: "SELECT a.*, u.name as user_name FROM assets a JOIN users u ON u.id = a.user_id WHERE a.family_id = ? AND a.visibility = 'family' ORDER BY ABS(a.amount) DESC",
+        args: [familyId],
+      });
+    } else {
+      r = await client.execute({
+        sql: "SELECT a.*, u.name as user_name FROM assets a JOIN users u ON u.id = a.user_id WHERE a.family_id = ? AND (a.visibility = 'family' OR a.user_id = ?) ORDER BY ABS(a.amount) DESC",
+        args: [familyId, userId!],
+      });
+    }
   } else {
     r = await client.execute({
-      sql: "SELECT * FROM assets WHERE user_id = ? ORDER BY amount DESC",
+      sql: "SELECT a.*, u.name as user_name FROM assets a JOIN users u ON u.id = a.user_id WHERE a.user_id = ? ORDER BY ABS(a.amount) DESC",
       args: [userId!],
     });
   }
@@ -361,26 +439,28 @@ export async function getAssets(familyId?: number, userId?: number) {
     label: String(row["label"]),
     amount: Number(row["amount"]),
     institution: String(row["institution"]),
+    visibility: String(row["visibility"] ?? "family"),
+    user_name: String(row["user_name"] ?? ""),
   }));
 }
 
 export async function insertAsset(data: {
   family_id?: number | null; user_id: number; type: string;
-  label: string; amount: number; institution: string;
+  label: string; amount: number; institution: string; visibility?: string;
 }) {
   await ensureInit();
   const r = await client.execute({
-    sql: "INSERT INTO assets (family_id, user_id, type, label, amount, institution) VALUES (?, ?, ?, ?, ?, ?)",
-    args: [data.family_id ?? null, data.user_id, data.type, data.label, data.amount, data.institution],
+    sql: "INSERT INTO assets (family_id, user_id, type, label, amount, institution, visibility) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    args: [data.family_id ?? null, data.user_id, data.type, data.label, data.amount, data.institution, data.visibility ?? "family"],
   });
   return Number(r.lastInsertRowid);
 }
 
-export async function updateAsset(id: number, userId: number, data: { amount: number; label?: string; institution?: string }) {
+export async function updateAsset(id: number, userId: number, data: { amount: number; label?: string; institution?: string; visibility?: string }) {
   await ensureInit();
   await client.execute({
-    sql: "UPDATE assets SET amount = ?, label = COALESCE(?, label), institution = COALESCE(?, institution), updated_at = datetime('now','localtime') WHERE id = ? AND user_id = ?",
-    args: [data.amount, data.label ?? null, data.institution ?? null, id, userId],
+    sql: "UPDATE assets SET amount = ?, label = COALESCE(?, label), institution = COALESCE(?, institution), visibility = COALESCE(?, visibility), updated_at = datetime('now','localtime') WHERE id = ? AND user_id = ?",
+    args: [data.amount, data.label ?? null, data.institution ?? null, data.visibility ?? null, id, userId],
   });
 }
 
@@ -441,4 +521,146 @@ export async function updateGoalAmount(id: number, amount: number) {
     sql: "UPDATE goals SET current_amount = ? WHERE id = ?",
     args: [amount, id],
   });
+}
+
+// ── Property Wishlist ──
+export async function getPropertyWishlist(userId: number, familyId?: number) {
+  await ensureInit();
+  let r;
+  if (familyId) {
+    r = await client.execute({
+      sql: "SELECT p.*, u.name as user_name FROM property_wishlist p JOIN users u ON u.id = p.user_id WHERE p.family_id = ? AND (p.visibility = 'family' OR p.user_id = ?) ORDER BY p.created_at DESC",
+      args: [familyId, userId],
+    });
+  } else {
+    r = await client.execute({
+      sql: "SELECT p.*, u.name as user_name FROM property_wishlist p JOIN users u ON u.id = p.user_id WHERE p.user_id = ? ORDER BY p.created_at DESC",
+      args: [userId],
+    });
+  }
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    family_id: row["family_id"] != null ? Number(row["family_id"]) : null,
+    name: String(row["name"]),
+    address: String(row["address"]),
+    price: row["price"] != null ? Number(row["price"]) : null,
+    property_type: String(row["property_type"]),
+    area: row["area"] != null ? Number(row["area"]) : null,
+    floor: String(row["floor"]),
+    naver_url: String(row["naver_url"]),
+    notes: String(row["notes"]),
+    visibility: String(row["visibility"]),
+    created_at: String(row["created_at"]),
+    user_name: String(row["user_name"] ?? ""),
+  }));
+}
+
+export async function insertPropertyWishlist(data: {
+  user_id: number; family_id?: number | null; name: string; address: string;
+  price?: number | null; property_type: string; area?: number | null;
+  floor: string; naver_url: string; notes: string; visibility: string;
+}) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "INSERT INTO property_wishlist (user_id, family_id, name, address, price, property_type, area, floor, naver_url, notes, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [data.user_id, data.family_id ?? null, data.name, data.address, data.price ?? null, data.property_type, data.area ?? null, data.floor, data.naver_url, data.notes, data.visibility],
+  });
+  return Number(r.lastInsertRowid);
+}
+
+export async function deletePropertyWishlist(id: number, userId: number) {
+  await ensureInit();
+  await client.execute({
+    sql: "DELETE FROM property_wishlist WHERE id = ? AND user_id = ?",
+    args: [id, userId],
+  });
+}
+
+// ── Monthly Budget ──
+export async function getMonthlyBudget(userId: number, year: number, month: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT * FROM monthly_budgets WHERE user_id = ? AND year = ? AND month = ?",
+    args: [userId, year, month],
+  });
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return {
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    year: Number(row["year"]),
+    month: Number(row["month"]),
+    budget_amount: Number(row["budget_amount"]),
+  };
+}
+
+export async function upsertMonthlyBudget(userId: number, familyId: number | null, year: number, month: number, budgetAmount: number) {
+  await ensureInit();
+  await client.execute({
+    sql: "INSERT INTO monthly_budgets (user_id, family_id, year, month, budget_amount) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, year, month) DO UPDATE SET budget_amount = excluded.budget_amount",
+    args: [userId, familyId ?? null, year, month, budgetAmount],
+  });
+}
+
+// ── Salary Info ──
+export async function getSalaryInfo(userId: number, year: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT * FROM salary_info WHERE user_id = ? AND year = ?",
+    args: [userId, year],
+  });
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return {
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    year: Number(row["year"]),
+    annual_salary: Number(row["annual_salary"]),
+    credit_card_spending: Number(row["credit_card_spending"]),
+    debit_card_spending: Number(row["debit_card_spending"]),
+    cash_spending: Number(row["cash_spending"]),
+    transit_spending: Number(row["transit_spending"]),
+    traditional_market_spending: Number(row["traditional_market_spending"]),
+  };
+}
+
+export async function upsertSalaryInfo(data: {
+  user_id: number; family_id?: number | null; year: number;
+  annual_salary: number; credit_card_spending: number; debit_card_spending: number;
+  cash_spending: number; transit_spending: number; traditional_market_spending: number;
+}) {
+  await ensureInit();
+  await client.execute({
+    sql: `INSERT INTO salary_info (user_id, family_id, year, annual_salary, credit_card_spending, debit_card_spending, cash_spending, transit_spending, traditional_market_spending)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(user_id, year) DO UPDATE SET
+            annual_salary = excluded.annual_salary,
+            credit_card_spending = excluded.credit_card_spending,
+            debit_card_spending = excluded.debit_card_spending,
+            cash_spending = excluded.cash_spending,
+            transit_spending = excluded.transit_spending,
+            traditional_market_spending = excluded.traditional_market_spending`,
+    args: [data.user_id, data.family_id ?? null, data.year, data.annual_salary, data.credit_card_spending, data.debit_card_spending, data.cash_spending, data.transit_spending, data.traditional_market_spending],
+  });
+}
+
+export async function getFamilySalaryInfo(familyId: number, year: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT s.*, u.name as user_name FROM salary_info s JOIN users u ON u.id = s.user_id WHERE s.family_id = ? AND s.year = ?",
+    args: [familyId, year],
+  });
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    user_name: String(row["user_name"]),
+    year: Number(row["year"]),
+    annual_salary: Number(row["annual_salary"]),
+    credit_card_spending: Number(row["credit_card_spending"]),
+    debit_card_spending: Number(row["debit_card_spending"]),
+    cash_spending: Number(row["cash_spending"]),
+    transit_spending: Number(row["transit_spending"]),
+    traditional_market_spending: Number(row["traditional_market_spending"]),
+  }));
 }

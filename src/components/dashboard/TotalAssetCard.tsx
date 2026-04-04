@@ -10,11 +10,15 @@ export function TotalAssetCard() {
   const { assets, isLoading } = useAssetStore();
   const user = useAuthStore((s) => s.user);
 
-  const totalAsset = assets.reduce((sum, a) => sum + a.amount, 0);
+  const liabilityTypes = new Set(["loan", "mortgage", "creditLoan"]);
+  const netWorth = assets.reduce((sum, a) => sum + a.amount, 0);
+  const totalLiabilities = assets
+    .filter((a) => liabilityTypes.has(a.type))
+    .reduce((sum, a) => sum + Math.abs(a.amount), 0);
 
   return (
     <Card padding="lg">
-      <p className="text-sm text-toss-text-sub mb-1">{user?.name}님의 총 자산</p>
+      <p className="text-sm text-toss-text-sub mb-1">{user?.name}님의 순자산</p>
 
       {isLoading ? (
         <>
@@ -24,10 +28,10 @@ export function TotalAssetCard() {
       ) : (
         <>
           <h2 className="text-3xl font-bold text-toss-text tracking-tight mb-1">
-            {formatKRW(totalAsset)}
+            {formatKRW(netWorth)}
           </h2>
           <p className="text-sm text-toss-text-ter">
-            {assets.length}개 자산 항목
+            {totalLiabilities > 0 ? `부채 ${formatKRW(totalLiabilities)} 포함` : `${assets.length}개 자산 항목`}
           </p>
         </>
       )}

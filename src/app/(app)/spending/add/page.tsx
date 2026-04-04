@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { CategoryPicker } from "@/components/spending-form/CategoryPicker";
 import { useSpendingStore } from "@/store/spendingStore";
-import { SpendingCategory } from "@/types";
+import { SpendingCategory, Visibility } from "@/types";
 import { clsx } from "clsx";
 
 type SpendingType = "expense" | "income";
@@ -18,6 +18,7 @@ export default function AddSpendingPage() {
   const [category, setCategory] = useState<SpendingCategory>("식비");
   const [type, setType] = useState<SpendingType>("expense");
   const [memo, setMemo] = useState("");
+  const [visibility, setVisibility] = useState<Visibility>("family");
   const [saving, setSaving] = useState(false);
 
   const amount = parseInt(amountStr, 10) || 0;
@@ -28,7 +29,7 @@ export default function AddSpendingPage() {
     try {
       const d = new Date();
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      await addTransaction({ type, category, amount, memo, date: today });
+      await addTransaction({ type, category, amount, memo, date: today, visibility });
       router.back();
     } catch {
       setSaving(false);
@@ -105,7 +106,7 @@ export default function AddSpendingPage() {
         </div>
 
         {/* 메모 */}
-        <div>
+        <div className="mb-5">
           <p className="text-xs font-semibold text-toss-text-sub mb-2">메모</p>
           <input
             type="text"
@@ -115,6 +116,25 @@ export default function AddSpendingPage() {
             className="w-full px-4 py-3 rounded-input border border-toss-border text-sm text-toss-text placeholder:text-toss-text-ter outline-none focus:border-toss-blue transition-colors"
             maxLength={50}
           />
+        </div>
+
+        {/* 공개 여부 */}
+        <div>
+          <p className="text-xs font-semibold text-toss-text-sub mb-2">공개 여부</p>
+          <div className="flex gap-2">
+            {(["family", "private"] as Visibility[]).map((v) => (
+              <button
+                key={v}
+                onClick={() => setVisibility(v)}
+                className={clsx("flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors", {
+                  "bg-toss-blue text-white": visibility === v,
+                  "bg-toss-surface text-toss-text-sub": visibility !== v,
+                })}
+              >
+                {v === "family" ? "🏠 가족 공유" : "🔒 나만 보기"}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>

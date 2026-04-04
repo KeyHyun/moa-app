@@ -64,8 +64,18 @@ export default function SpendingPage() {
         <CategoryFilterBar />
       </div>
 
+      {/* 거래 추가 FAB */}
+      <Link
+        href="/spending/add"
+        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-toss-blue flex items-center justify-center shadow-lg"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      </Link>
+
       {/* 거래 목록 */}
-      <div className="bg-white divide-y divide-toss-border">
+      <div className="bg-white divide-y divide-toss-border pb-24">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3 px-5 py-4">

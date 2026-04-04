@@ -15,11 +15,14 @@ export const CATEGORY_CONFIG: Record<
 };
 
 export const ASSET_TYPE_CONFIG = {
-  cash: { icon: "💵", label: "현금" },
-  savings: { icon: "🏦", label: "예금" },
-  installment: { icon: "💳", label: "적금" },
-  investment: { icon: "📈", label: "주식·펀드" },
-  realEstate: { icon: "🏠", label: "부동산" },
+  cash: { icon: "💵", label: "현금", isLiability: false },
+  savings: { icon: "🏦", label: "예금", isLiability: false },
+  installment: { icon: "💳", label: "적금", isLiability: false },
+  investment: { icon: "📈", label: "주식·펀드", isLiability: false },
+  realEstate: { icon: "🏠", label: "부동산", isLiability: false },
+  loan: { icon: "📋", label: "일반 대출", isLiability: true },
+  mortgage: { icon: "🏠", label: "주택담보대출", isLiability: true },
+  creditLoan: { icon: "💸", label: "신용대출", isLiability: true },
 };
 
 export const SPENDING_CATEGORIES: SpendingCategory[] = [

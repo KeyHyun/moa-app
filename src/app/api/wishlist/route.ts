@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseToken } from "@/lib/auth";
-import { getTransactions, insertTransaction, deleteTransaction, getFamilyByUser } from "@/lib/db";
+import { getPropertyWishlist, insertPropertyWishlist, deletePropertyWishlist, getFamilyByUser } from "@/lib/db";
 
 function getUserId(req: NextRequest): number | null {
   const token = req.cookies.get("token")?.value;
@@ -12,8 +12,7 @@ export async function GET(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const family = await getFamilyByUser(userId);
-  const limit = parseInt(req.nextUrl.searchParams.get("limit") || "100");
-  const items = await getTransactions(userId, family?.id, limit);
+  const items = await getPropertyWishlist(userId, family?.id);
   return NextResponse.json(items);
 }
 
@@ -21,18 +20,20 @@ export async function POST(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
-  const { type, category, amount, memo, date, visibility } = body;
-  if (!type || !category || !amount || !date)
-    return NextResponse.json({ error: "필수 항목이 누락됐습니다." }, { status: 400 });
+  const { name, address, price, property_type, area, floor, naver_url, notes, visibility } = body;
+  if (!name) return NextResponse.json({ error: "이름을 입력해주세요." }, { status: 400 });
   const family = await getFamilyByUser(userId);
-  const id = await insertTransaction({
-    family_id: family?.id,
+  const id = await insertPropertyWishlist({
     user_id: userId,
-    type,
-    category,
-    amount: Number(amount),
-    memo: memo || "",
-    date,
+    family_id: family?.id ?? null,
+    name,
+    address: address || "",
+    price: price ? Number(price) : null,
+    property_type: property_type || "apartment",
+    area: area ? Number(area) : null,
+    floor: floor || "",
+    naver_url: naver_url || "",
+    notes: notes || "",
     visibility: visibility || "family",
   });
   return NextResponse.json({ ok: true, id });
@@ -42,6 +43,6 @@ export async function DELETE(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await req.json();
-  await deleteTransaction(Number(id), userId);
+  await deletePropertyWishlist(Number(id), userId);
   return NextResponse.json({ ok: true });
 }

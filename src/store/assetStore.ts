@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-export type AssetType = "cash" | "savings" | "installment" | "investment" | "realEstate";
+export type AssetType = "cash" | "savings" | "installment" | "investment" | "realEstate" | "loan" | "mortgage" | "creditLoan";
 
 export interface AssetItem {
   id: number;
@@ -10,6 +10,9 @@ export interface AssetItem {
   label: string;
   amount: number;
   institution: string;
+  visibility?: string;
+  user_id?: number;
+  user_name?: string;
 }
 
 interface AssetState {

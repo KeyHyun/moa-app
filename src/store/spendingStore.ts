@@ -11,6 +11,7 @@ export interface Transaction {
   memo: string;
   date: string;
   user_name?: string;
+  visibility?: "family" | "private";
 }
 
 interface SpendingState {

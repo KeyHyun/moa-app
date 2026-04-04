@@ -29,22 +29,25 @@ export function AssetBreakdownList() {
               </div>
             ))
           : assets.map((asset) => {
-              const config = ASSET_TYPE_CONFIG[asset.type] ?? { icon: "💰", label: asset.type };
+              const config = ASSET_TYPE_CONFIG[asset.type] ?? { icon: "💰", label: asset.type, isLiability: false };
+              const isLiability = config.isLiability;
               return (
                 <div
                   key={asset.id}
                   className="flex items-center justify-between px-5 py-4 hover:bg-toss-surface transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-toss-blue-light flex items-center justify-center text-xl">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${isLiability ? "bg-red-50" : "bg-toss-blue-light"}`}>
                       {config.icon}
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-toss-text">{asset.label}</p>
-                      <p className="text-xs text-toss-text-ter mt-0.5">{asset.institution}</p>
+                      <p className="text-xs text-toss-text-ter mt-0.5">{config.label}{asset.institution ? ` · ${asset.institution}` : ""}</p>
                     </div>
                   </div>
-                  <p className="text-sm font-semibold text-toss-text">{formatKRW(asset.amount)}</p>
+                  <p className={`text-sm font-semibold ${isLiability ? "text-toss-red" : "text-toss-text"}`}>
+                    {isLiability ? "-" : ""}{formatKRW(Math.abs(asset.amount))}
+                  </p>
                 </div>
               );
             })}
