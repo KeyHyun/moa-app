@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { SPENDING_CATEGORIES, CATEGORY_CONFIG } from "@/lib/constants";
+import { SPENDING_CATEGORIES, INCOME_CATEGORIES, CATEGORY_CONFIG } from "@/lib/constants";
 import { clsx } from "clsx";
 
 interface CategoryPickerProps {
   value: string;
   onChange: (cat: string) => void;
+  type?: "expense" | "income";
 }
 
-export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
+export function CategoryPicker({ value, onChange, type = "expense" }: CategoryPickerProps) {
   const [customInput, setCustomInput] = useState("");
   const [showCustom, setShowCustom] = useState(false);
 
-  const isCustom = !SPENDING_CATEGORIES.includes(value as never) && value !== "";
+  const categories = type === "income" ? INCOME_CATEGORIES : SPENDING_CATEGORIES;
+  const isCustom = !(categories as readonly string[]).includes(value) && value !== "";
 
   const handleCustomConfirm = () => {
     if (customInput.trim()) {
@@ -25,8 +27,8 @@ export function CategoryPicker({ value, onChange }: CategoryPickerProps) {
   return (
     <div>
       <div className="grid grid-cols-4 gap-2">
-        {SPENDING_CATEGORIES.map((cat) => {
-          const config = CATEGORY_CONFIG[cat];
+        {categories.map((cat) => {
+          const config = CATEGORY_CONFIG[cat] ?? CATEGORY_CONFIG["기타"];
           const isSelected = value === cat;
           return (
             <button

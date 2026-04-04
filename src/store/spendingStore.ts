@@ -21,6 +21,7 @@ interface SpendingState {
   transactions: Transaction[];
   selectedDate: Date;
   selectedCategory: SpendingCategory | null;
+  selectedType: "all" | "expense" | "income";
   isLoading: boolean;
   fetchTransactions: () => Promise<void>;
   addTransaction: (data: Omit<Transaction, "id" | "user_name" | "user_id">) => Promise<void>;
@@ -28,12 +29,14 @@ interface SpendingState {
   deleteTransaction: (id: number) => Promise<void>;
   setSelectedDate: (date: Date) => void;
   setSelectedCategory: (cat: SpendingCategory | null) => void;
+  setSelectedType: (t: "all" | "expense" | "income") => void;
 }
 
 export const useSpendingStore = create<SpendingState>()((set, get) => ({
   transactions: [],
   selectedDate: new Date(),
   selectedCategory: null,
+  selectedType: "all",
   isLoading: false,
 
   fetchTransactions: async () => {
@@ -86,4 +89,5 @@ export const useSpendingStore = create<SpendingState>()((set, get) => ({
 
   setSelectedDate: (date) => set({ selectedDate: date, selectedCategory: null }),
   setSelectedCategory: (cat) => set({ selectedCategory: cat }),
+  setSelectedType: (t) => set({ selectedType: t, selectedCategory: null }),
 }));

@@ -27,6 +27,7 @@ export default function SpendingPage() {
   const isLoading = useSpendingStore((s) => s.isLoading);
   const transactions = useSpendingStore((s) => s.transactions);
   const selectedCategory = useSpendingStore((s) => s.selectedCategory);
+  const selectedType = useSpendingStore((s) => s.selectedType);
 
   const now = new Date();
   const [cardBills, setCardBills] = useState<CardBill[]>([]);
@@ -80,6 +81,7 @@ export default function SpendingPage() {
 
   const items = transactions.filter((t) => {
     if (!isSameDay(parseLocalDate(t.date), selectedDate)) return false;
+    if (selectedType !== "all" && t.type !== selectedType) return false;
     if (selectedCategory && t.category !== selectedCategory) return false;
     return true;
   });
@@ -96,7 +98,7 @@ export default function SpendingPage() {
 
   return (
     <div className="min-h-screen bg-toss-surface">
-      <TopBar title="거래 내역" />
+      <TopBar title="가계부" />
 
       {/* 날짜 헤더 */}
       <div className="sticky top-14 z-30 bg-white border-b border-toss-border">

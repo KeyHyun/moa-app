@@ -9,6 +9,7 @@ import { SubCategoryPicker } from "@/components/spending-form/SubCategoryPicker"
 import { useSpendingStore } from "@/store/spendingStore";
 import { Visibility } from "@/types";
 import { clsx } from "clsx";
+import { INCOME_CATEGORIES } from "@/lib/constants";
 
 type SpendingType = "expense" | "income";
 
@@ -129,7 +130,11 @@ function AddSpendingInner() {
           {(["expense", "income"] as SpendingType[]).map((t) => (
             <button
               key={t}
-              onClick={() => setType(t)}
+              onClick={() => {
+                setType(t);
+                setCategory(t === "income" ? "급여" : "식비");
+                setSubCategory("");
+              }}
               className={clsx(
                 "flex-1 py-2 text-sm font-semibold rounded-pill transition-all",
                 type === t
@@ -182,6 +187,7 @@ function AddSpendingInner() {
           <p className="text-xs font-semibold text-toss-text-sub mb-2">카테고리</p>
           <CategoryPicker
             value={category}
+            type={type}
             onChange={(cat) => { setCategory(cat); setSubCategory(""); }}
           />
         </div>

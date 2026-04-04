@@ -9,11 +9,13 @@ export function DailySummaryBar() {
   const transactions = useSpendingStore((s) => s.transactions);
   const selectedDate = useSpendingStore((s) => s.selectedDate);
   const selectedCategory = useSpendingStore((s) => s.selectedCategory);
+  const selectedType = useSpendingStore((s) => s.selectedType);
   const currentUser = useAuthStore((s) => s.user);
 
   const dayItems = transactions.filter((t) => {
     if (!isSameDay(parseLocalDate(t.date), selectedDate)) return false;
     if (selectedCategory && t.category !== selectedCategory) return false;
+    if (selectedType !== "all" && t.type !== selectedType) return false;
     return true;
   });
 
