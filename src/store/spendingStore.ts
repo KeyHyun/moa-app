@@ -12,6 +12,7 @@ export interface Transaction {
   date: string;
   user_name?: string;
   visibility?: "family" | "private";
+  card_name?: string;
 }
 
 interface SpendingState {

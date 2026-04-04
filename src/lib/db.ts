@@ -80,6 +80,14 @@ async function _initSchema() {
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         UNIQUE(family_id, date)
       )`,
+      `CREATE TABLE IF NOT EXISTS user_cards (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        family_id INTEGER REFERENCES families(id),
+        card_name TEXT NOT NULL,
+        card_type TEXT NOT NULL DEFAULT 'credit',
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
       `CREATE TABLE IF NOT EXISTS card_bills (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL REFERENCES users(id),
@@ -143,6 +151,7 @@ async function _initSchema() {
   const migrations = [
     "ALTER TABLE transactions ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
     "ALTER TABLE assets ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
+    "ALTER TABLE transactions ADD COLUMN card_name TEXT NOT NULL DEFAULT ''",
   ];
   for (const sql of migrations) {
     try {
@@ -408,18 +417,19 @@ export async function getTransactions(userId: number, familyId?: number, limit =
     date: String(row["date"]),
     user_name: String(row["user_name"]),
     visibility: String(row["visibility"] ?? "family"),
+    card_name: String(row["card_name"] ?? ""),
   }));
 }
 
 export async function insertTransaction(data: {
   family_id?: number; user_id: number; type: string;
   category: string; amount: number; memo: string; date: string;
-  visibility?: string;
+  visibility?: string; card_name?: string;
 }) {
   await ensureInit();
   const r = await client.execute({
-    sql: "INSERT INTO transactions (family_id, user_id, type, category, amount, memo, date, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [data.family_id ?? null, data.user_id, data.type, data.category, data.amount, data.memo, data.date, data.visibility ?? "family"],
+    sql: "INSERT INTO transactions (family_id, user_id, type, category, amount, memo, date, visibility, card_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [data.family_id ?? null, data.user_id, data.type, data.category, data.amount, data.memo, data.date, data.visibility ?? "family", data.card_name ?? ""],
   });
   return Number(r.lastInsertRowid);
 }
@@ -549,6 +559,66 @@ export async function updateGoalAmount(id: number, amount: number) {
     sql: "UPDATE goals SET current_amount = ? WHERE id = ?",
     args: [amount, id],
   });
+}
+
+// ── User Cards ──
+export async function getUserCards(userId: number, familyId?: number) {
+  await ensureInit();
+  let r;
+  if (familyId) {
+    r = await client.execute({
+      sql: "SELECT uc.*, u.name as user_name FROM user_cards uc JOIN users u ON u.id = uc.user_id WHERE uc.family_id = ? ORDER BY uc.user_id, uc.created_at ASC",
+      args: [familyId],
+    });
+  } else {
+    r = await client.execute({
+      sql: "SELECT uc.*, u.name as user_name FROM user_cards uc JOIN users u ON u.id = uc.user_id WHERE uc.user_id = ? ORDER BY uc.created_at ASC",
+      args: [userId],
+    });
+  }
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    user_name: String(row["user_name"]),
+    card_name: String(row["card_name"]),
+    card_type: String(row["card_type"]),
+  }));
+}
+
+export async function insertUserCard(data: { user_id: number; family_id?: number | null; card_name: string; card_type: string }) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "INSERT INTO user_cards (user_id, family_id, card_name, card_type) VALUES (?, ?, ?, ?)",
+    args: [data.user_id, data.family_id ?? null, data.card_name, data.card_type],
+  });
+  return Number(r.lastInsertRowid);
+}
+
+export async function deleteUserCard(id: number, userId: number) {
+  await ensureInit();
+  await client.execute({
+    sql: "DELETE FROM user_cards WHERE id = ? AND user_id = ?",
+    args: [id, userId],
+  });
+}
+
+export async function getCardSpendingSummary(familyId: number, year: number, month: number) {
+  await ensureInit();
+  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+  const r = await client.execute({
+    sql: `SELECT t.card_name, t.user_id, u.name as user_name, SUM(t.amount) as total
+          FROM transactions t JOIN users u ON u.id = t.user_id
+          WHERE t.family_id = ? AND t.type = 'expense' AND t.card_name != '' AND t.date LIKE ?
+          GROUP BY t.card_name, t.user_id
+          ORDER BY total DESC`,
+    args: [familyId, `${monthStr}%`],
+  });
+  return r.rows.map((row) => ({
+    card_name: String(row["card_name"]),
+    user_id: Number(row["user_id"]),
+    user_name: String(row["user_name"]),
+    total: Number(row["total"]),
+  }));
 }
 
 // ── Card Bills ──

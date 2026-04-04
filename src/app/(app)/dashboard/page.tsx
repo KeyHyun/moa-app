@@ -11,6 +11,7 @@ import { AssetTrendChart } from "@/components/dashboard/AssetTrendChart";
 import { SpendingSnapshotCard } from "@/components/dashboard/SpendingSnapshotCard";
 import { GoalsWidget } from "@/components/dashboard/GoalsWidget";
 import { StatsChart } from "@/components/dashboard/StatsChart";
+import { CardSpendingWidget } from "@/components/dashboard/CardSpendingWidget";
 
 /* ── 위젯 렌더러 ── */
 function Widget({ id }: { id: WidgetId }) {
@@ -21,6 +22,7 @@ function Widget({ id }: { id: WidgetId }) {
     case "spendingSnapshot": return <SpendingSnapshotCard />;
     case "goals":            return <GoalsWidget />;
     case "assetBreakdown":   return <AssetBreakdownList />;
+    case "cardSpending":     return <CardSpendingWidget />;
     default:                 return null;
   }
 }

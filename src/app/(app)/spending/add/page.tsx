@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatKRW } from "@/lib/formatters";
@@ -10,6 +10,20 @@ import { SpendingCategory, Visibility } from "@/types";
 import { clsx } from "clsx";
 
 type SpendingType = "expense" | "income";
+
+interface UserCard {
+  id: number;
+  user_id: number;
+  user_name: string;
+  card_name: string;
+  card_type: string;
+}
+
+const CARD_TYPE_OPTIONS = [
+  { value: "credit", label: "신용카드" },
+  { value: "debit",  label: "체크카드" },
+  { value: "cash",   label: "현금" },
+];
 
 export default function AddSpendingPage() {
   const router = useRouter();
@@ -22,7 +36,41 @@ export default function AddSpendingPage() {
   const [visibility, setVisibility] = useState<Visibility>("family");
   const [saving, setSaving] = useState(false);
 
+  // 카드 관련
+  const [cards, setCards] = useState<UserCard[]>([]);
+  const [selectedCard, setSelectedCard] = useState<string>("");
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [newCardName, setNewCardName] = useState("");
+  const [newCardType, setNewCardType] = useState("credit");
+  const [addingCard, setAddingCard] = useState(false);
+
   const amount = parseInt(amountStr, 10) || 0;
+
+  useEffect(() => {
+    fetch("/api/cards").then((r) => r.json()).then((d) => setCards(d.cards || []));
+  }, []);
+
+  const handleAddCard = async () => {
+    if (!newCardName.trim()) return;
+    setAddingCard(true);
+    try {
+      const res = await fetch("/api/cards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ card_name: newCardName.trim(), card_type: newCardType }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const newCard: UserCard = { id: data.id, user_id: 0, user_name: "", card_name: newCardName.trim(), card_type: newCardType };
+        setCards((prev) => [...prev, newCard]);
+        setSelectedCard(newCardName.trim());
+        setNewCardName("");
+        setShowAddCard(false);
+      }
+    } finally {
+      setAddingCard(false);
+    }
+  };
 
   const handleSave = async () => {
     if (amount === 0 || saving) return;
@@ -30,33 +78,18 @@ export default function AddSpendingPage() {
     try {
       const d = new Date();
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      await addTransaction({ type, category, amount, memo, date: today, visibility });
+      await addTransaction({ type, category, amount, memo, date: today, visibility, card_name: selectedCard });
       router.back();
     } catch {
       setSaving(false);
     }
   };
 
+  const cardTypeLabel = (t: string) => CARD_TYPE_OPTIONS.find((o) => o.value === t)?.label ?? t;
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      <TopBar
-        showBack
-        title={type === "expense" ? "지출 추가" : "수입 추가"}
-        rightAction={
-          <button
-            onClick={handleSave}
-            disabled={amount === 0 || saving}
-            className={clsx(
-              "text-sm font-semibold px-3 py-1.5 rounded-pill transition-colors whitespace-nowrap",
-              amount > 0 && !saving
-                ? "text-toss-blue hover:bg-toss-blue-light"
-                : "text-toss-text-ter"
-            )}
-          >
-            {saving ? "저장 중..." : "저장"}
-          </button>
-        }
-      />
+      <TopBar showBack title={type === "expense" ? "지출 추가" : "수입 추가"} />
 
       {/* Type toggle */}
       <div className="flex mx-5 mt-3 bg-toss-surface rounded-pill p-1">
@@ -67,9 +100,7 @@ export default function AddSpendingPage() {
             className={clsx(
               "flex-1 py-2 text-sm font-semibold rounded-pill transition-all",
               type === t
-                ? t === "expense"
-                  ? "bg-toss-red text-white shadow-sm"
-                  : "bg-toss-green text-white shadow-sm"
+                ? t === "expense" ? "bg-toss-red text-white shadow-sm" : "bg-toss-green text-white shadow-sm"
                 : "text-toss-text-sub"
             )}
           >
@@ -78,9 +109,9 @@ export default function AddSpendingPage() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-4">
+      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-4 space-y-5">
         {/* 금액 */}
-        <div className="mb-6">
+        <div>
           <p className="text-xs font-semibold text-toss-text-sub mb-1">금액</p>
           <div className="flex items-baseline gap-2 pb-2 border-b-2 border-toss-border focus-within:border-toss-blue transition-colors">
             <input
@@ -101,13 +132,99 @@ export default function AddSpendingPage() {
         </div>
 
         {/* 카테고리 */}
-        <div className="mb-5">
+        <div>
           <p className="text-xs font-semibold text-toss-text-sub mb-2">카테고리</p>
           <CategoryPicker value={category} onChange={setCategory} />
         </div>
 
+        {/* 사용 카드 (지출일 때만) */}
+        {type === "expense" && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-toss-text-sub">사용 카드</p>
+              <button
+                onClick={() => setShowAddCard((v) => !v)}
+                className="text-xs text-toss-blue font-semibold"
+              >
+                {showAddCard ? "취소" : "+ 카드 등록"}
+              </button>
+            </div>
+
+            {/* 카드 등록 폼 */}
+            {showAddCard && (
+              <div className="mb-3 p-3 bg-toss-surface rounded-xl space-y-2">
+                <input
+                  type="text"
+                  value={newCardName}
+                  onChange={(e) => setNewCardName(e.target.value)}
+                  placeholder="카드명 (예: 현대카드M, 카카오뱅크 체크)"
+                  className="w-full px-3 py-2.5 rounded-lg border border-toss-border text-sm outline-none focus:border-toss-blue bg-white"
+                />
+                <div className="flex gap-2">
+                  {CARD_TYPE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setNewCardType(opt.value)}
+                      className={clsx("flex-1 py-2 text-xs font-semibold rounded-lg transition-colors", {
+                        "bg-toss-blue text-white": newCardType === opt.value,
+                        "bg-white text-toss-text-sub border border-toss-border": newCardType !== opt.value,
+                      })}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={handleAddCard}
+                  disabled={addingCard || !newCardName.trim()}
+                  className="w-full py-2.5 bg-toss-blue disabled:bg-toss-border text-white text-sm font-semibold rounded-lg"
+                >
+                  {addingCard ? "등록 중..." : "등록하기"}
+                </button>
+              </div>
+            )}
+
+            {/* 카드 목록 */}
+            <div className="flex flex-wrap gap-2">
+              {/* 선택 안 함 */}
+              <button
+                onClick={() => setSelectedCard("")}
+                className={clsx("flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors", {
+                  "border-toss-blue bg-toss-blue-light text-toss-blue": selectedCard === "",
+                  "border-toss-border bg-white text-toss-text-sub": selectedCard !== "",
+                })}
+              >
+                선택 안 함
+              </button>
+
+              {cards.map((card) => (
+                <button
+                  key={card.id}
+                  onClick={() => setSelectedCard(card.card_name)}
+                  className={clsx("flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors", {
+                    "border-toss-blue bg-toss-blue-light text-toss-blue": selectedCard === card.card_name,
+                    "border-toss-border bg-white text-toss-text-sub": selectedCard !== card.card_name,
+                  })}
+                >
+                  <span>{card.card_type === "credit" ? "💳" : card.card_type === "debit" ? "🏧" : "💵"}</span>
+                  <span>{card.card_name}</span>
+                  {card.user_name && (
+                    <span className="text-[10px] text-toss-text-ter">({card.user_name})</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {selectedCard && (
+              <p className="text-xs text-toss-blue mt-2 pl-1">
+                💳 {selectedCard} 사용
+              </p>
+            )}
+          </div>
+        )}
+
         {/* 메모 */}
-        <div className="mb-5">
+        <div>
           <p className="text-xs font-semibold text-toss-text-sub mb-2">메모</p>
           <input
             type="text"
@@ -147,9 +264,7 @@ export default function AddSpendingPage() {
           className={clsx(
             "w-full py-4 rounded-2xl font-semibold text-sm transition-colors",
             amount > 0 && !saving
-              ? type === "expense"
-                ? "bg-toss-red text-white"
-                : "bg-toss-green text-white"
+              ? type === "expense" ? "bg-toss-red text-white" : "bg-toss-green text-white"
               : "bg-toss-border text-toss-text-ter"
           )}
         >

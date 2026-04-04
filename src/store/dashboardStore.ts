@@ -9,7 +9,8 @@ export type WidgetId =
   | "statsChart"
   | "spendingSnapshot"
   | "goals"
-  | "assetBreakdown";
+  | "assetBreakdown"
+  | "cardSpending";
 
 export interface WidgetConfig {
   id: WidgetId;
@@ -24,6 +25,7 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "spendingSnapshot", label: "오늘 지출",       enabled: true },
   { id: "goals",            label: "가족 목표",        enabled: true },
   { id: "assetBreakdown",   label: "자산 구성",        enabled: true },
+  { id: "cardSpending",     label: "카드별 지출",       enabled: true },
 ];
 
 interface DashboardState {

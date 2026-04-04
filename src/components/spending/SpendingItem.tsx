@@ -33,13 +33,18 @@ export function SpendingItem({ item }: SpendingItemProps) {
         </div>
         <div>
           <p className="text-sm font-semibold text-toss-text">{item.memo || item.category}</p>
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <span
               className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
               style={{ color: cat.color, backgroundColor: cat.bg }}
             >
               {item.category}
             </span>
+            {item.card_name && (
+              <span className="text-[10px] text-toss-text-sub bg-toss-surface px-1.5 py-0.5 rounded-full">
+                💳 {item.card_name}
+              </span>
+            )}
             {item.user_name && (
               <span className="text-[10px] text-toss-text-ter">{item.user_name}</span>
             )}
