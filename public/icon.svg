@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- 배경: 파란 둥근 사각형 -->
+  <rect width="32" height="32" rx="8" fill="#3182F6"/>
+  <!-- 동전 쌓는 모양 (모으다) -->
+  <!-- 아래 동전 -->
+  <ellipse cx="16" cy="22" rx="8" ry="3" fill="#1A56DB"/>
+  <rect x="8" y="19" width="16" height="3" fill="#1A56DB"/>
+  <ellipse cx="16" cy="19" rx="8" ry="3" fill="#60A5FA"/>
+  <!-- 중간 동전 -->
+  <ellipse cx="16" cy="16" rx="7" ry="2.5" fill="#1A56DB"/>
+  <rect x="9" y="13.5" width="14" height="2.5" fill="#1A56DB"/>
+  <ellipse cx="16" cy="13.5" rx="7" ry="2.5" fill="#93C5FD"/>
+  <!-- 위 동전 -->
+  <ellipse cx="16" cy="11" rx="6" ry="2" fill="#1A56DB"/>
+  <rect x="10" y="9" width="12" height="2" fill="#1A56DB"/>
+  <ellipse cx="16" cy="9" rx="6" ry="2" fill="#BFDBFE"/>
+</svg>

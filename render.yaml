@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: moa-app
+    runtime: node
+    region: singapore
+    plan: free           # 무료 플랜 (슬립 있음, Disk 없음 → Turso로 데이터 유지)
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TURSO_DATABASE_URL
+        sync: false      # Render 대시보드에서 직접 입력
+      - key: TURSO_AUTH_TOKEN
+        sync: false      # Render 대시보드에서 직접 입력
