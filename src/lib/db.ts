@@ -527,20 +527,31 @@ export async function insertAsset(data: {
   return Number(r.lastInsertRowid);
 }
 
-export async function updateAsset(id: number, userId: number, data: { amount: number; label?: string; institution?: string; visibility?: string }) {
+export async function updateAsset(id: number, userId: number, familyId: number | undefined, data: {
+  amount?: number; label?: string; institution?: string; visibility?: string; user_id?: number;
+}) {
   await ensureInit();
-  await client.execute({
-    sql: "UPDATE assets SET amount = ?, label = COALESCE(?, label), institution = COALESCE(?, institution), visibility = COALESCE(?, visibility), updated_at = datetime('now','localtime') WHERE id = ? AND user_id = ?",
-    args: [data.amount, data.label ?? null, data.institution ?? null, data.visibility ?? null, id, userId],
-  });
+  const sets = ["updated_at = datetime('now','localtime')"];
+  const args: (string | number | null)[] = [];
+  if (data.amount !== undefined)      { sets.push("amount = ?");      args.push(data.amount); }
+  if (data.label !== undefined)       { sets.push("label = ?");       args.push(data.label); }
+  if (data.institution !== undefined) { sets.push("institution = ?"); args.push(data.institution); }
+  if (data.visibility !== undefined)  { sets.push("visibility = ?");  args.push(data.visibility); }
+  if (data.user_id !== undefined)     { sets.push("user_id = ?");     args.push(data.user_id); }
+  const cond = familyId
+    ? "(id = ? AND (user_id = ? OR (family_id = ? AND visibility = 'family')))"
+    : "(id = ? AND user_id = ?)";
+  const condArgs: (string | number)[] = familyId ? [id, userId, familyId] : [id, userId];
+  await client.execute({ sql: `UPDATE assets SET ${sets.join(", ")} WHERE ${cond}`, args: [...args, ...condArgs] });
 }
 
-export async function deleteAsset(id: number, userId: number) {
+export async function deleteAsset(id: number, userId: number, familyId?: number) {
   await ensureInit();
-  await client.execute({
-    sql: "DELETE FROM assets WHERE id = ? AND user_id = ?",
-    args: [id, userId],
-  });
+  const cond = familyId
+    ? "(id = ? AND (user_id = ? OR (family_id = ? AND visibility = 'family')))"
+    : "(id = ? AND user_id = ?)";
+  const args: (string | number)[] = familyId ? [id, userId, familyId] : [id, userId];
+  await client.execute({ sql: `DELETE FROM assets WHERE ${cond}`, args });
 }
 
 // ── Asset Snapshots ──

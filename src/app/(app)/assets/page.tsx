@@ -3,10 +3,17 @@
 import { useEffect, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { useAssetStore, AssetItem } from "@/store/assetStore";
+import { useAuthStore } from "@/store/authStore";
 import { formatKRW } from "@/lib/formatters";
 import { ASSET_TYPE_CONFIG } from "@/lib/constants";
 import { AssetType, Visibility } from "@/types";
 import { clsx } from "clsx";
+
+interface FamilyMember {
+  id: number;
+  name: string;
+  role: string;
+}
 
 const ASSET_TYPES: { value: AssetType; label: string; icon: string; isLiability?: boolean }[] = [
   { value: "savings",     label: "예금",         icon: "🏦" },
@@ -25,26 +32,36 @@ interface AssetForm {
   amount: string;
   institution: string;
   visibility: Visibility;
+  ownerUserId: number | null; // null = current user
 }
 
-const emptyForm = (): AssetForm => ({
+const emptyForm = (defaultUserId: number | null = null): AssetForm => ({
   type: "savings",
   label: "",
   amount: "",
   institution: "",
   visibility: "family",
+  ownerUserId: defaultUserId,
 });
 
 export default function AssetsPage() {
   const { assets, isLoading, fetchAssets } = useAssetStore();
+  const currentUser = useAuthStore((s) => s.user);
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<AssetItem | null>(null);
   const [form, setForm] = useState<AssetForm>(emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [viewMode, setViewMode] = useState<"all" | "assets" | "liabilities">("all");
+  const [members, setMembers] = useState<FamilyMember[]>([]);
 
   useEffect(() => { fetchAssets(); }, [fetchAssets]);
+
+  useEffect(() => {
+    fetch("/api/family").then((r) => r.json()).then((d) => {
+      if (d.members) setMembers(d.members);
+    });
+  }, []);
 
   const liabilityTypes = new Set(["loan", "mortgage", "creditLoan"]);
   const totalAssets = assets
@@ -63,7 +80,7 @@ export default function AssetsPage() {
 
   const openAdd = () => {
     setEditTarget(null);
-    setForm(emptyForm());
+    setForm(emptyForm(currentUser?.id ?? null));
     setError("");
     setShowForm(true);
   };
@@ -76,6 +93,7 @@ export default function AssetsPage() {
       amount: Math.abs(asset.amount).toString(),
       institution: asset.institution,
       visibility: (asset.visibility as Visibility) || "family",
+      ownerUserId: asset.user_id ?? currentUser?.id ?? null,
     });
     setError("");
     setShowForm(true);
@@ -107,6 +125,7 @@ export default function AssetsPage() {
             label: form.label.trim(),
             institution: form.institution.trim(),
             visibility: form.visibility,
+            owner_user_id: form.ownerUserId,
           }),
         });
       } else {
@@ -119,6 +138,7 @@ export default function AssetsPage() {
             amount: finalAmount,
             institution: form.institution.trim(),
             visibility: form.visibility,
+            owner_user_id: form.ownerUserId,
           }),
         });
       }
@@ -264,21 +284,31 @@ export default function AssetsPage() {
         </button>
       )}
 
-      {/* 추가/수정 바텀 시트 */}
+      {/* 추가/수정 모달 */}
       {showForm && (
-        <>
-          <div className="fixed inset-0 bg-black/40 z-40" onClick={closeForm} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-xl max-w-lg mx-auto flex flex-col max-h-[90vh]">
-            {/* 핸들 + 헤더 */}
-            <div className="px-5 pt-5 pb-3 flex-shrink-0">
-              <div className="w-10 h-1 bg-toss-border rounded-full mx-auto mb-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* 배경 딤 */}
+          <div className="absolute inset-0 bg-black/50" onClick={closeForm} />
+
+          {/* 모달 카드 */}
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col max-h-[85vh]">
+            {/* 헤더 */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 flex-shrink-0 border-b border-toss-border">
               <h2 className="text-base font-bold text-toss-text">
                 {editTarget ? "자산 수정" : "자산 추가"}
               </h2>
+              <button
+                onClick={closeForm}
+                className="w-8 h-8 rounded-full bg-toss-surface flex items-center justify-center text-toss-text-sub hover:bg-toss-border transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
             </div>
 
             {/* 스크롤 영역 */}
-            <div className="overflow-y-auto flex-1 px-5 pb-4 space-y-4">
+            <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
               {/* 자산 유형 (추가 시만) */}
               {!editTarget && (
                 <div>
@@ -341,7 +371,7 @@ export default function AssetsPage() {
               {/* 금액 */}
               <div>
                 <p className="text-xs font-semibold text-toss-text-sub mb-2">
-                  금액 (원) {ASSET_TYPE_CONFIG[form.type]?.isLiability && <span className="text-toss-red font-normal">· 부채는 양수로 입력</span>}
+                  금액 (원){ASSET_TYPE_CONFIG[form.type]?.isLiability && <span className="text-toss-red font-normal ml-1">· 부채는 양수로 입력</span>}
                 </p>
                 <input
                   type="text"
@@ -373,6 +403,33 @@ export default function AssetsPage() {
                 />
               </div>
 
+              {/* 소유자 (가족이 있을 때만) */}
+              {members.length > 1 && (
+                <div>
+                  <p className="text-xs font-semibold text-toss-text-sub mb-2">소유자</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {members.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setForm((f) => ({ ...f, ownerUserId: m.id }))}
+                        className={clsx("flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium border transition-colors", {
+                          "border-toss-blue bg-toss-blue-light text-toss-blue": form.ownerUserId === m.id,
+                          "border-toss-border bg-white text-toss-text-sub": form.ownerUserId !== m.id,
+                        })}
+                      >
+                        <span className="text-base">
+                          {m.id === currentUser?.id ? "🙋" : "👤"}
+                        </span>
+                        <span>{m.name}</span>
+                        {m.id === currentUser?.id && (
+                          <span className="text-[10px] text-toss-text-ter">(나)</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* 공개 여부 */}
               <div>
                 <p className="text-xs font-semibold text-toss-text-sub mb-2">공개 여부</p>
@@ -395,8 +452,8 @@ export default function AssetsPage() {
               {error && <p className="text-xs text-toss-red pl-1">{error}</p>}
             </div>
 
-            {/* 저장 버튼 - 하단 고정 */}
-            <div className="px-5 pb-8 pt-3 flex-shrink-0 border-t border-toss-border">
+            {/* 저장 버튼 */}
+            <div className="px-5 pb-5 pt-3 flex-shrink-0 border-t border-toss-border">
               <button
                 onClick={handleSave}
                 disabled={saving}
@@ -406,7 +463,7 @@ export default function AssetsPage() {
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );

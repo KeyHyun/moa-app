@@ -27,13 +27,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { type, label, amount, institution, visibility } = await req.json();
+  const { type, label, amount, institution, visibility, owner_user_id } = await req.json();
   if (!type || !label || amount == null)
     return NextResponse.json({ error: "필수 항목이 누락됐습니다." }, { status: 400 });
   const family = await getFamilyByUser(userId);
+  // owner_user_id: family member override (defaults to current user)
+  const assetUserId = owner_user_id ? Number(owner_user_id) : userId;
   const id = await insertAsset({
     family_id: family?.id ?? null,
-    user_id: userId,
+    user_id: assetUserId,
     type,
     label,
     amount: Number(amount),
@@ -47,8 +49,15 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id, amount, label, institution, visibility } = await req.json();
-  await updateAsset(Number(id), userId, { amount: Number(amount), label, institution, visibility });
+  const { id, amount, label, institution, visibility, owner_user_id } = await req.json();
+  const family = await getFamilyByUser(userId);
+  await updateAsset(Number(id), userId, family?.id, {
+    ...(amount != null && { amount: Number(amount) }),
+    ...(label !== undefined && { label }),
+    ...(institution !== undefined && { institution }),
+    ...(visibility !== undefined && { visibility }),
+    ...(owner_user_id !== undefined && { user_id: Number(owner_user_id) }),
+  });
   await recordSnapshot(userId);
   return NextResponse.json({ ok: true });
 }
@@ -57,7 +66,8 @@ export async function DELETE(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await req.json();
-  await deleteAsset(Number(id), userId);
+  const family = await getFamilyByUser(userId);
+  await deleteAsset(Number(id), userId, family?.id);
   await recordSnapshot(userId);
   return NextResponse.json({ ok: true });
 }
