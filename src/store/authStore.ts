@@ -21,6 +21,7 @@ interface AuthState {
   family: Family | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithFaceId: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   fetchMe: () => Promise<void>;
@@ -43,6 +44,36 @@ export const useAuthStore = create<AuthState>()(
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "로그인에 실패했습니다.");
         set({ user: data.user, family: data.family ?? null, isAuthenticated: true });
+      },
+
+      loginWithFaceId: async (email: string) => {
+        // 동적 import — 클라이언트에서만 실행
+        const { startAuthentication } = await import("@simplewebauthn/browser");
+
+        const beginRes = await fetch("/api/auth/webauthn/authenticate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "begin", email }),
+        });
+        const beginData = await beginRes.json();
+        if (!beginRes.ok) throw new Error(beginData.error || "Face ID 인증 시작 실패");
+
+        let authResponse;
+        try {
+          authResponse = await startAuthentication({ optionsJSON: beginData });
+        } catch {
+          throw new Error("Face ID 인증이 취소되었습니다.");
+        }
+
+        const completeRes = await fetch("/api/auth/webauthn/authenticate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "complete", email, response: authResponse }),
+        });
+        const completeData = await completeRes.json();
+        if (!completeRes.ok) throw new Error(completeData.error || "Face ID 인증 실패");
+
+        set({ user: completeData.user, family: completeData.family ?? null, isAuthenticated: true });
       },
 
       logout: async () => {

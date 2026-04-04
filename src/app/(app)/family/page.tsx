@@ -32,6 +32,11 @@ export default function FamilyPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  // Face ID
+  const [hasFaceId, setHasFaceId] = useState<boolean | null>(null);
+  const [faceIdLoading, setFaceIdLoading] = useState(false);
+  const [faceIdMsg, setFaceIdMsg] = useState("");
+
   const fetchFamily = async () => {
     setLoading(true);
     try {
@@ -42,7 +47,77 @@ export default function FamilyPage() {
     }
   };
 
-  useEffect(() => { fetchFamily(); }, []);
+  const checkFaceId = async () => {
+    try {
+      const r = await fetch("/api/auth/webauthn/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "check" }),
+      });
+      const d = await r.json();
+      setHasFaceId(d.hasCredential ?? false);
+    } catch { setHasFaceId(false); }
+  };
+
+  useEffect(() => { fetchFamily(); checkFaceId(); }, []);
+
+  const handleRegisterFaceId = async () => {
+    setFaceIdLoading(true);
+    setFaceIdMsg("");
+    try {
+      const { startRegistration } = await import("@simplewebauthn/browser");
+
+      const beginRes = await fetch("/api/auth/webauthn/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "begin" }),
+      });
+      const beginData = await beginRes.json();
+      if (!beginRes.ok) throw new Error(beginData.error);
+
+      let regResponse;
+      try {
+        regResponse = await startRegistration({ optionsJSON: beginData });
+      } catch {
+        throw new Error("Face ID 등록이 취소되었습니다.");
+      }
+
+      const completeRes = await fetch("/api/auth/webauthn/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete", response: regResponse }),
+      });
+      const completeData = await completeRes.json();
+      if (!completeRes.ok) throw new Error(completeData.error);
+
+      setHasFaceId(true);
+      setFaceIdMsg("Face ID가 등록되었습니다.");
+    } catch (e: unknown) {
+      setFaceIdMsg(e instanceof Error ? e.message : "등록에 실패했습니다.");
+    } finally {
+      setFaceIdLoading(false);
+    }
+  };
+
+  const handleRemoveFaceId = async () => {
+    if (!confirm("Face ID 등록을 해제할까요?")) return;
+    setFaceIdLoading(true);
+    setFaceIdMsg("");
+    try {
+      const r = await fetch("/api/auth/webauthn/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete" }),
+      });
+      if (!r.ok) throw new Error("해제에 실패했습니다.");
+      setHasFaceId(false);
+      setFaceIdMsg("Face ID 등록이 해제되었습니다.");
+    } catch (e: unknown) {
+      setFaceIdMsg(e instanceof Error ? e.message : "해제에 실패했습니다.");
+    } finally {
+      setFaceIdLoading(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!familyName.trim()) { setError("가족 이름을 입력해주세요."); return; }
@@ -240,20 +315,63 @@ export default function FamilyPage() {
 
           {/* 현재 사용자 */}
           <div className="mx-4 mt-4">
-            <div className="bg-white rounded-2xl shadow-sm px-5 py-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-toss-blue flex items-center justify-center text-white font-bold">
-                {user?.name?.[0] ?? "?"}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-toss-blue flex items-center justify-center text-white font-bold">
+                  {user?.name?.[0] ?? "?"}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-toss-text">{user?.name}</p>
+                  <p className="text-xs text-toss-text-ter">{user?.email}</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    await fetch("/api/auth", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "logout" }),
+                    });
+                    router.replace("/login");
+                  }}
+                  className="text-xs text-toss-text-ter"
+                >
+                  로그아웃
+                </button>
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-toss-text">{user?.name}</p>
-                <p className="text-xs text-toss-text-ter">{user?.email}</p>
+
+              {/* Face ID 설정 */}
+              <div className="px-5 py-4 border-t border-toss-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-toss-text">🔐 Face ID 로그인</p>
+                    <p className="text-xs text-toss-text-ter mt-0.5">
+                      {hasFaceId === null ? "확인 중..." : hasFaceId ? "등록됨" : "미등록"}
+                    </p>
+                  </div>
+                  {hasFaceId ? (
+                    <button
+                      onClick={handleRemoveFaceId}
+                      disabled={faceIdLoading}
+                      className="text-xs text-toss-red font-semibold px-3 py-1.5 rounded-pill bg-red-50"
+                    >
+                      {faceIdLoading ? "처리 중..." : "해제"}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleRegisterFaceId}
+                      disabled={faceIdLoading}
+                      className="text-xs text-toss-blue font-semibold px-3 py-1.5 rounded-pill bg-toss-blue-light"
+                    >
+                      {faceIdLoading ? "처리 중..." : "등록하기"}
+                    </button>
+                  )}
+                </div>
+                {faceIdMsg && (
+                  <p className={`text-xs mt-2 ${faceIdMsg.includes("실패") || faceIdMsg.includes("취소") ? "text-toss-red" : "text-toss-green"}`}>
+                    {faceIdMsg}
+                  </p>
+                )}
               </div>
-              <button
-                onClick={() => router.push("/login")}
-                className="text-xs text-toss-text-ter"
-              >
-                로그아웃
-              </button>
             </div>
           </div>
         </>

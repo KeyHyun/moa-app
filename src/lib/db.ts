@@ -139,6 +139,15 @@ async function _initSchema() {
         created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
         UNIQUE(user_id, year)
       )`,
+      `CREATE TABLE IF NOT EXISTS webauthn_credentials (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        credential_id TEXT NOT NULL UNIQUE,
+        public_key TEXT NOT NULL,
+        counter INTEGER NOT NULL DEFAULT 0,
+        transports TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id)`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_family ON transactions(family_id)`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
@@ -163,6 +172,8 @@ async function _initSchema() {
     "ALTER TABLE property_wishlist ADD COLUMN naver_complex_url TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE property_wishlist ADD COLUMN floor_min INTEGER",
     "ALTER TABLE property_wishlist ADD COLUMN floor_max INTEGER",
+    // session & webauthn
+    "ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0",
   ];
   for (const sql of migrations) {
     try {
@@ -869,4 +880,101 @@ export async function getFamilySalaryInfo(familyId: number, year: number) {
     transit_spending: Number(row["transit_spending"]),
     traditional_market_spending: Number(row["traditional_market_spending"]),
   }));
+}
+
+// ── Session version (단일 기기 로그인) ──
+export async function incrementSessionVersion(userId: number): Promise<number> {
+  await ensureInit();
+  await client.execute({
+    sql: "UPDATE users SET session_version = session_version + 1 WHERE id = ?",
+    args: [userId],
+  });
+  const r = await client.execute({
+    sql: "SELECT session_version FROM users WHERE id = ?",
+    args: [userId],
+  });
+  return Number(r.rows[0]?.["session_version"] ?? 0);
+}
+
+export async function getSessionVersion(userId: number): Promise<number> {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT session_version FROM users WHERE id = ?",
+    args: [userId],
+  });
+  return Number(r.rows[0]?.["session_version"] ?? 0);
+}
+
+// ── WebAuthn Credentials ──
+export interface WebAuthnCredential {
+  id: number;
+  user_id: number;
+  credential_id: string;
+  public_key: string; // base64
+  counter: number;
+  transports: string[] | null;
+}
+
+export async function getWebAuthnCredentialsByUserId(userId: number): Promise<WebAuthnCredential[]> {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT * FROM webauthn_credentials WHERE user_id = ?",
+    args: [userId],
+  });
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    credential_id: String(row["credential_id"]),
+    public_key: String(row["public_key"]),
+    counter: Number(row["counter"]),
+    transports: row["transports"] ? JSON.parse(String(row["transports"])) : null,
+  }));
+}
+
+export async function getWebAuthnCredentialById(credentialId: string): Promise<WebAuthnCredential | null> {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT * FROM webauthn_credentials WHERE credential_id = ?",
+    args: [credentialId],
+  });
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return {
+    id: Number(row["id"]),
+    user_id: Number(row["user_id"]),
+    credential_id: String(row["credential_id"]),
+    public_key: String(row["public_key"]),
+    counter: Number(row["counter"]),
+    transports: row["transports"] ? JSON.parse(String(row["transports"])) : null,
+  };
+}
+
+export async function saveWebAuthnCredential(
+  userId: number,
+  credentialId: string,
+  publicKey: string,
+  counter: number,
+  transports: string[] | null
+) {
+  await ensureInit();
+  await client.execute({
+    sql: "INSERT INTO webauthn_credentials (user_id, credential_id, public_key, counter, transports) VALUES (?, ?, ?, ?, ?)",
+    args: [userId, credentialId, publicKey, counter, transports ? JSON.stringify(transports) : null],
+  });
+}
+
+export async function updateCredentialCounter(credentialId: string, counter: number) {
+  await ensureInit();
+  await client.execute({
+    sql: "UPDATE webauthn_credentials SET counter = ? WHERE credential_id = ?",
+    args: [counter, credentialId],
+  });
+}
+
+export async function deleteWebAuthnCredentialsByUserId(userId: number) {
+  await ensureInit();
+  await client.execute({
+    sql: "DELETE FROM webauthn_credentials WHERE user_id = ?",
+    args: [userId],
+  });
 }

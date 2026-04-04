@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { findUserByEmail, findUserById, createUser, getFamilyByUser } from "@/lib/db";
+import {
+  findUserByEmail,
+  findUserById,
+  createUser,
+  getFamilyByUser,
+  incrementSessionVersion,
+  getSessionVersion,
+} from "@/lib/db";
 import { makeToken, parseToken } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
@@ -11,8 +18,9 @@ export async function POST(req: NextRequest) {
     if (!user || !bcrypt.compareSync(password, user.password_hash))
       return NextResponse.json({ error: "이메일 또는 비밀번호가 올바르지 않습니다." }, { status: 401 });
 
+    const sessionVersion = await incrementSessionVersion(user.id);
     const family = await getFamilyByUser(user.id);
-    const token = makeToken(user.id);
+    const token = makeToken(user.id, sessionVersion);
     const res = NextResponse.json({ ok: true, user: { id: user.id, name: user.name, email: user.email }, family });
     res.cookies.set("token", token, { httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30 });
     return res;
@@ -23,7 +31,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "이미 사용 중인 이메일입니다." }, { status: 409 });
     const hash = bcrypt.hashSync(password, 10);
     const userId = await createUser(name, email, hash);
-    const token = makeToken(userId);
+    const sessionVersion = await incrementSessionVersion(userId);
+    const token = makeToken(userId, sessionVersion);
     const res = NextResponse.json({ ok: true, user: { id: userId, name, email }, family: null });
     res.cookies.set("token", token, { httpOnly: true, path: "/", maxAge: 60 * 60 * 24 * 30 });
     return res;
@@ -40,6 +49,13 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const parsed = parseToken(token);
     if (!parsed) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // session_version 검증 — 다른 기기에서 로그인하면 기존 세션 만료
+    const currentVersion = await getSessionVersion(parsed.userId);
+    if (parsed.sessionVersion !== currentVersion) {
+      return NextResponse.json({ error: "다른 기기에서 로그인되었습니다. 다시 로그인해주세요." }, { status: 401 });
+    }
+
     const u = await findUserById(parsed.userId);
     if (!u) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const family = await getFamilyByUser(u.id);
