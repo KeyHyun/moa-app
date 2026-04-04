@@ -20,19 +20,20 @@ export async function POST(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
-  const { name, address, price, property_type, area, floor, naver_url, notes, visibility } = body;
+  const { name, location, property_type, trade_type, min_price, max_price, min_area, max_area, notes, visibility } = body;
   if (!name) return NextResponse.json({ error: "이름을 입력해주세요." }, { status: 400 });
   const family = await getFamilyByUser(userId);
   const id = await insertPropertyWishlist({
     user_id: userId,
     family_id: family?.id ?? null,
     name,
-    address: address || "",
-    price: price ? Number(price) : null,
-    property_type: property_type || "apartment",
-    area: area ? Number(area) : null,
-    floor: floor || "",
-    naver_url: naver_url || "",
+    location: location || "",
+    property_type: property_type || "APT",
+    trade_type: trade_type || "A1",
+    min_price: min_price ? Number(min_price) : null,
+    max_price: max_price ? Number(max_price) : null,
+    min_area: min_area ? Number(min_area) : null,
+    max_area: max_area ? Number(max_area) : null,
     notes: notes || "",
     visibility: visibility || "family",
   });

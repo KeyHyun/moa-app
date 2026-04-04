@@ -39,6 +39,7 @@ export function SpendingItem({ item }: SpendingItemProps) {
               style={{ color: cat.color, backgroundColor: cat.bg }}
             >
               {item.category}
+              {item.sub_category ? ` > ${item.sub_category}` : ""}
             </span>
             {item.card_name && (
               <span className="text-[10px] text-toss-text-sub bg-toss-surface px-1.5 py-0.5 rounded-full">

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatKRW } from "@/lib/formatters";
 import { CategoryPicker } from "@/components/spending-form/CategoryPicker";
+import { SubCategoryPicker } from "@/components/spending-form/SubCategoryPicker";
 import { useSpendingStore } from "@/store/spendingStore";
-import { SpendingCategory, Visibility } from "@/types";
+import { Visibility } from "@/types";
 import { clsx } from "clsx";
 
 type SpendingType = "expense" | "income";
@@ -30,7 +31,8 @@ export default function AddSpendingPage() {
   const addTransaction = useSpendingStore((s) => s.addTransaction);
 
   const [amountStr, setAmountStr] = useState("");
-  const [category, setCategory] = useState<SpendingCategory>("식비");
+  const [category, setCategory] = useState<string>("식비");
+  const [subCategory, setSubCategory] = useState<string>("");
   const [type, setType] = useState<SpendingType>("expense");
   const [memo, setMemo] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("family");
@@ -78,7 +80,7 @@ export default function AddSpendingPage() {
     try {
       const d = new Date();
       const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      await addTransaction({ type, category, amount, memo, date: today, visibility, card_name: selectedCard });
+      await addTransaction({ type, category, amount, memo, date: today, visibility, card_name: selectedCard, sub_category: subCategory });
       router.back();
     } catch {
       setSaving(false);
@@ -132,7 +134,22 @@ export default function AddSpendingPage() {
         {/* 카테고리 */}
         <div>
           <p className="text-xs font-semibold text-toss-text-sub mb-2">카테고리</p>
-          <CategoryPicker value={category} onChange={setCategory} />
+          <CategoryPicker
+            value={category}
+            onChange={(cat) => { setCategory(cat); setSubCategory(""); }}
+          />
+        </div>
+
+        {/* 세부 카테고리 */}
+        <div>
+          <p className="text-xs font-semibold text-toss-text-sub mb-2">
+            세부 카테고리 <span className="font-normal text-toss-text-ter">(선택)</span>
+          </p>
+          <SubCategoryPicker
+            category={category}
+            value={subCategory}
+            onChange={setSubCategory}
+          />
         </div>
 
         {/* 사용 카드 (지출일 때만) */}

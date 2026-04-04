@@ -152,6 +152,14 @@ async function _initSchema() {
     "ALTER TABLE transactions ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
     "ALTER TABLE assets ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
     "ALTER TABLE transactions ADD COLUMN card_name TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE transactions ADD COLUMN sub_category TEXT NOT NULL DEFAULT ''",
+    // property_wishlist filter columns
+    "ALTER TABLE property_wishlist ADD COLUMN location TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE property_wishlist ADD COLUMN trade_type TEXT NOT NULL DEFAULT 'A1'",
+    "ALTER TABLE property_wishlist ADD COLUMN min_price INTEGER",
+    "ALTER TABLE property_wishlist ADD COLUMN max_price INTEGER",
+    "ALTER TABLE property_wishlist ADD COLUMN min_area REAL",
+    "ALTER TABLE property_wishlist ADD COLUMN max_area REAL",
   ];
   for (const sql of migrations) {
     try {
@@ -418,18 +426,19 @@ export async function getTransactions(userId: number, familyId?: number, limit =
     user_name: String(row["user_name"]),
     visibility: String(row["visibility"] ?? "family"),
     card_name: String(row["card_name"] ?? ""),
+    sub_category: String(row["sub_category"] ?? ""),
   }));
 }
 
 export async function insertTransaction(data: {
   family_id?: number; user_id: number; type: string;
   category: string; amount: number; memo: string; date: string;
-  visibility?: string; card_name?: string;
+  visibility?: string; card_name?: string; sub_category?: string;
 }) {
   await ensureInit();
   const r = await client.execute({
-    sql: "INSERT INTO transactions (family_id, user_id, type, category, amount, memo, date, visibility, card_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [data.family_id ?? null, data.user_id, data.type, data.category, data.amount, data.memo, data.date, data.visibility ?? "family", data.card_name ?? ""],
+    sql: "INSERT INTO transactions (family_id, user_id, type, category, amount, memo, date, visibility, card_name, sub_category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [data.family_id ?? null, data.user_id, data.type, data.category, data.amount, data.memo, data.date, data.visibility ?? "family", data.card_name ?? "", data.sub_category ?? ""],
   });
   return Number(r.lastInsertRowid);
 }
@@ -694,12 +703,13 @@ export async function getPropertyWishlist(userId: number, familyId?: number) {
     user_id: Number(row["user_id"]),
     family_id: row["family_id"] != null ? Number(row["family_id"]) : null,
     name: String(row["name"]),
-    address: String(row["address"]),
-    price: row["price"] != null ? Number(row["price"]) : null,
+    location: String(row["location"] ?? ""),
     property_type: String(row["property_type"]),
-    area: row["area"] != null ? Number(row["area"]) : null,
-    floor: String(row["floor"]),
-    naver_url: String(row["naver_url"]),
+    trade_type: String(row["trade_type"] ?? "A1"),
+    min_price: row["min_price"] != null ? Number(row["min_price"]) : null,
+    max_price: row["max_price"] != null ? Number(row["max_price"]) : null,
+    min_area: row["min_area"] != null ? Number(row["min_area"]) : null,
+    max_area: row["max_area"] != null ? Number(row["max_area"]) : null,
     notes: String(row["notes"]),
     visibility: String(row["visibility"]),
     created_at: String(row["created_at"]),
@@ -708,14 +718,16 @@ export async function getPropertyWishlist(userId: number, familyId?: number) {
 }
 
 export async function insertPropertyWishlist(data: {
-  user_id: number; family_id?: number | null; name: string; address: string;
-  price?: number | null; property_type: string; area?: number | null;
-  floor: string; naver_url: string; notes: string; visibility: string;
+  user_id: number; family_id?: number | null; name: string; location: string;
+  property_type: string; trade_type: string;
+  min_price?: number | null; max_price?: number | null;
+  min_area?: number | null; max_area?: number | null;
+  notes: string; visibility: string;
 }) {
   await ensureInit();
   const r = await client.execute({
-    sql: "INSERT INTO property_wishlist (user_id, family_id, name, address, price, property_type, area, floor, naver_url, notes, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [data.user_id, data.family_id ?? null, data.name, data.address, data.price ?? null, data.property_type, data.area ?? null, data.floor, data.naver_url, data.notes, data.visibility],
+    sql: "INSERT INTO property_wishlist (user_id, family_id, name, location, property_type, trade_type, min_price, max_price, min_area, max_area, notes, visibility) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [data.user_id, data.family_id ?? null, data.name, data.location, data.property_type, data.trade_type, data.min_price ?? null, data.max_price ?? null, data.min_area ?? null, data.max_area ?? null, data.notes, data.visibility],
   });
   return Number(r.lastInsertRowid);
 }

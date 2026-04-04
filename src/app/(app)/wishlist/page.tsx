@@ -10,12 +10,13 @@ interface Property {
   id: number;
   user_id: number;
   name: string;
-  address: string;
-  price: number | null;
+  location: string;
   property_type: string;
-  area: number | null;
-  floor: string;
-  naver_url: string;
+  trade_type: string;
+  min_price: number | null;
+  max_price: number | null;
+  min_area: number | null;
+  max_area: number | null;
   notes: string;
   visibility: string;
   user_name: string;
@@ -24,35 +25,63 @@ interface Property {
 
 interface PropertyForm {
   name: string;
-  address: string;
-  price: string;
+  location: string;
   property_type: string;
-  area: string;
-  floor: string;
-  naver_url: string;
+  trade_type: string;
+  min_price: string;
+  max_price: string;
+  min_area: string;
+  max_area: string;
   notes: string;
   visibility: Visibility;
 }
 
 const emptyForm = (): PropertyForm => ({
   name: "",
-  address: "",
-  price: "",
-  property_type: "apartment",
-  area: "",
-  floor: "",
-  naver_url: "",
+  location: "",
+  property_type: "APT",
+  trade_type: "A1",
+  min_price: "",
+  max_price: "",
+  min_area: "",
+  max_area: "",
   notes: "",
   visibility: "family",
 });
 
 const PROPERTY_TYPES = [
-  { value: "apartment", label: "아파트", icon: "🏢" },
-  { value: "villa",     label: "빌라",   icon: "🏘️" },
-  { value: "house",     label: "단독주택", icon: "🏠" },
-  { value: "officetel", label: "오피스텔", icon: "🏬" },
-  { value: "land",      label: "토지",   icon: "🌱" },
+  { value: "APT",   label: "아파트",   icon: "🏢", naverCode: "APT" },
+  { value: "VL",    label: "빌라/연립", icon: "🏘️", naverCode: "VL:DDDGG:JWJT:YGJT" },
+  { value: "OPST",  label: "오피스텔", icon: "🏬", naverCode: "OPST" },
+  { value: "DDDGG", label: "단독주택", icon: "🏠", naverCode: "DDDGG" },
 ];
+
+const TRADE_TYPES = [
+  { value: "A1", label: "매매", naverCode: "RETAIL" },
+  { value: "B1", label: "전세", naverCode: "LEASE" },
+  { value: "B2", label: "월세", naverCode: "MONTH" },
+];
+
+function buildNaverUrl(item: Property): string {
+  const pt = PROPERTY_TYPES.find((p) => p.value === item.property_type);
+  const tt = TRADE_TYPES.find((t) => t.value === item.trade_type);
+  const params = new URLSearchParams();
+  params.set("ms", "37.5,127,15");
+  if (pt) params.set("a", pt.naverCode);
+  if (tt) params.set("e", tt.naverCode);
+  if (item.min_price || item.max_price) {
+    const minP = item.min_price ? Math.round(item.min_price / 100000000) : 0;
+    const maxP = item.max_price ? Math.round(item.max_price / 100000000) : 99;
+    params.set("p", `${minP}:${maxP}`);
+  }
+  if (item.min_area || item.max_area) {
+    const minA = item.min_area ?? 0;
+    const maxA = item.max_area ?? 999;
+    params.set("aa", `${minA}:${maxA}`);
+  }
+  const base = pt?.value === "APT" ? "apartments" : pt?.value === "OPST" ? "office-studios" : "houses";
+  return `https://new.land.naver.com/${base}?${params.toString()}`;
+}
 
 export default function WishlistPage() {
   const [items, setItems] = useState<Property[]>([]);
@@ -75,7 +104,7 @@ export default function WishlistPage() {
   useEffect(() => { fetchItems(); }, []);
 
   const handleSave = async () => {
-    if (!form.name.trim()) { setError("매물명을 입력해주세요."); return; }
+    if (!form.name.trim()) { setError("찜 이름을 입력해주세요."); return; }
     setSaving(true);
     setError("");
     try {
@@ -84,8 +113,10 @@ export default function WishlistPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          price: form.price ? parseInt(form.price.replace(/,/g, ""), 10) : null,
-          area: form.area ? parseFloat(form.area) : null,
+          min_price: form.min_price ? parseInt(form.min_price, 10) : null,
+          max_price: form.max_price ? parseInt(form.max_price, 10) : null,
+          min_area: form.min_area ? parseFloat(form.min_area) : null,
+          max_area: form.max_area ? parseFloat(form.max_area) : null,
         }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error); return; }
@@ -100,7 +131,7 @@ export default function WishlistPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("이 매물을 삭제할까요?")) return;
+    if (!confirm("이 찜을 삭제할까요?")) return;
     await fetch("/api/wishlist", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -109,8 +140,8 @@ export default function WishlistPage() {
     setItems((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const typeConfig = (type: string) =>
-    PROPERTY_TYPES.find((t) => t.value === type) ?? { icon: "🏠", label: type };
+  const ptConfig = (type: string) => PROPERTY_TYPES.find((p) => p.value === type) ?? PROPERTY_TYPES[0];
+  const ttConfig = (type: string) => TRADE_TYPES.find((t) => t.value === type) ?? TRADE_TYPES[0];
 
   return (
     <div className="min-h-screen bg-toss-surface pb-24">
@@ -127,81 +158,74 @@ export default function WishlistPage() {
         }
       />
 
-      {/* 네이버 부동산 바로가기 */}
-      <button
-        onClick={() => window.open("https://new.land.naver.com/", "_blank")}
-        className="mx-4 mt-3 mb-3 w-[calc(100%-2rem)] flex items-center justify-between px-4 py-3.5 bg-green-50 rounded-2xl active:bg-green-100 transition-colors"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🏠</span>
-          <div className="text-left">
-            <p className="text-sm font-bold text-green-700">네이버 부동산 열기</p>
-            <p className="text-xs text-green-600 mt-0.5">매물을 찾고 URL을 복사해 찜 목록에 저장하세요</p>
-          </div>
-        </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path d="M9 18l6-6-6-6" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
-
       {loading ? (
-        <div className="px-4 space-y-3">
-          {[1, 2, 3].map((i) => <div key={i} className="h-28 bg-white rounded-2xl animate-pulse" />)}
+        <div className="px-4 mt-4 space-y-3">
+          {[1, 2, 3].map((i) => <div key={i} className="h-36 bg-white rounded-2xl animate-pulse" />)}
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 gap-3">
           <span className="text-5xl">🏠</span>
-          <p className="text-base font-semibold text-toss-text">찜한 매물이 없어요</p>
-          <p className="text-sm text-toss-text-ter">네이버 부동산에서 마음에 드는 매물을 저장해보세요</p>
+          <p className="text-base font-semibold text-toss-text">찜한 지역이 없어요</p>
+          <p className="text-sm text-toss-text-ter">관심 지역과 조건을 저장해보세요</p>
           <button
             onClick={() => { setShowForm(true); setForm(emptyForm()); setError(""); }}
             className="mt-2 px-6 py-2.5 bg-toss-blue text-white text-sm font-semibold rounded-pill"
           >
-            + 매물 추가
+            + 조건 추가
           </button>
         </div>
       ) : (
-        <div className="px-4 space-y-3">
+        <div className="px-4 mt-4 space-y-3">
           {items.map((item) => {
-            const type = typeConfig(item.property_type);
+            const pt = ptConfig(item.property_type);
+            const tt = ttConfig(item.trade_type);
+            const naverUrl = buildNaverUrl(item);
             return (
               <div key={item.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div
-                  className={clsx("px-5 py-4", item.naver_url && "cursor-pointer active:bg-toss-surface")}
-                  onClick={() => item.naver_url && window.open(item.naver_url, "_blank")}
-                >
+                <div className="px-5 py-4">
                   <div className="flex items-start gap-3">
                     <div className="w-11 h-11 rounded-xl bg-toss-surface flex items-center justify-center text-2xl flex-shrink-0">
-                      {type.icon}
+                      {pt.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-toss-text truncate">{item.name}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-bold text-toss-text">{item.name}</p>
                         {item.visibility === "private" && (
                           <span className="text-xs bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">나만</span>
                         )}
-                        {item.naver_url && (
-                          <span className="text-xs bg-green-50 text-green-600 px-1.5 py-0.5 rounded-full flex-shrink-0">N 링크</span>
+                      </div>
+
+                      {/* 위치 */}
+                      {item.location && (
+                        <p className="text-xs text-toss-text-sub mt-0.5">📍 {item.location}</p>
+                      )}
+
+                      {/* 필터 뱃지 */}
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        <span className="text-[11px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                          {pt.label}
+                        </span>
+                        <span className="text-[11px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">
+                          {tt.label}
+                        </span>
+                        {(item.min_area || item.max_area) && (
+                          <span className="text-[11px] bg-toss-surface text-toss-text-sub px-2 py-0.5 rounded-full">
+                            {item.min_area ?? 0}~{item.max_area ?? "∞"}㎡
+                          </span>
+                        )}
+                        {(item.min_price || item.max_price) && (
+                          <span className="text-[11px] bg-toss-surface text-toss-text-sub px-2 py-0.5 rounded-full">
+                            {item.min_price ? formatKRW(item.min_price) : "0"}~{item.max_price ? formatKRW(item.max_price) : "∞"}
+                          </span>
                         )}
                       </div>
-                      <p className="text-xs text-toss-text-ter mt-0.5">{type.label}{item.address ? ` · ${item.address}` : ""}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        {item.price && (
-                          <p className="text-sm font-bold text-toss-blue">{formatKRW(item.price)}</p>
-                        )}
-                        {item.area && (
-                          <p className="text-xs text-toss-text-sub">{item.area}㎡</p>
-                        )}
-                        {item.floor && (
-                          <p className="text-xs text-toss-text-sub">{item.floor}층</p>
-                        )}
-                      </div>
+
                       {item.notes && (
                         <p className="text-xs text-toss-text-ter mt-1.5 line-clamp-2">{item.notes}</p>
                       )}
                     </div>
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
+                      onClick={() => handleDelete(item.id)}
                       className="w-8 h-8 rounded-full bg-toss-surface flex items-center justify-center text-toss-text-ter flex-shrink-0"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -209,7 +233,19 @@ export default function WishlistPage() {
                       </svg>
                     </button>
                   </div>
-                  <p className="text-xs text-toss-text-ter mt-2">저장자: {item.user_name}</p>
+
+                  {/* 네이버 검색 버튼 */}
+                  <button
+                    onClick={() => window.open(naverUrl, "_blank")}
+                    className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-50 active:bg-green-100 transition-colors"
+                  >
+                    <span className="text-sm font-semibold text-green-700">🏠 네이버 부동산에서 검색</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 18l6-6-6-6" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  </button>
+
+                  <p className="text-xs text-toss-text-ter mt-2">저장: {item.user_name}</p>
                 </div>
               </div>
             );
@@ -224,13 +260,38 @@ export default function WishlistPage() {
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-xl max-w-lg mx-auto flex flex-col max-h-[90vh]">
             <div className="px-5 pt-5 pb-3 flex-shrink-0">
               <div className="w-10 h-1 bg-toss-border rounded-full mx-auto mb-4" />
-              <h2 className="text-base font-bold text-toss-text">매물 추가</h2>
+              <h2 className="text-base font-bold text-toss-text">관심 매물 조건 추가</h2>
+              <p className="text-xs text-toss-text-ter mt-0.5">조건을 저장하면 네이버 부동산에서 바로 검색할 수 있어요</p>
             </div>
 
             <div className="overflow-y-auto flex-1 px-5 pb-4 space-y-4">
+              {/* 찜 이름 */}
+              <div>
+                <p className="text-xs font-semibold text-toss-text-sub mb-2">찜 이름 *</p>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="예: 강남 아파트 탐색, 용산 전세 후보"
+                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
+                />
+              </div>
+
+              {/* 지역명 */}
+              <div>
+                <p className="text-xs font-semibold text-toss-text-sub mb-2">지역명 <span className="font-normal text-toss-text-ter">(선택)</span></p>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+                  placeholder="예: 서울 강남구, 경기 분당구, 마포구"
+                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
+                />
+              </div>
+
               {/* 매물 유형 */}
               <div>
-                <p className="text-xs font-semibold text-toss-text-sub mb-2">유형</p>
+                <p className="text-xs font-semibold text-toss-text-sub mb-2">매물 유형</p>
                 <div className="flex gap-2 flex-wrap">
                   {PROPERTY_TYPES.map((t) => (
                     <button
@@ -247,80 +308,112 @@ export default function WishlistPage() {
                 </div>
               </div>
 
-              {/* 매물명 */}
+              {/* 거래 유형 */}
               <div>
-                <p className="text-xs font-semibold text-toss-text-sub mb-2">매물명 *</p>
-                <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  placeholder="예: 강남 래미안 84㎡"
-                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                <p className="text-xs font-semibold text-toss-text-sub mb-2">거래 유형</p>
+                <div className="flex gap-2">
+                  {TRADE_TYPES.map((t) => (
+                    <button
+                      key={t.value}
+                      onClick={() => setForm((f) => ({ ...f, trade_type: t.value }))}
+                      className={clsx("flex-1 py-2 rounded-xl text-sm font-medium transition-colors", {
+                        "bg-toss-blue text-white": form.trade_type === t.value,
+                        "bg-toss-surface text-toss-text-sub": form.trade_type !== t.value,
+                      })}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* 주소 */}
+              {/* 면적 범위 */}
               <div>
-                <p className="text-xs font-semibold text-toss-text-sub mb-2">주소 <span className="font-normal text-toss-text-ter">(선택)</span></p>
-                <input type="text" value={form.address} onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                  placeholder="예: 서울시 강남구 역삼동"
-                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                <p className="text-xs font-semibold text-toss-text-sub mb-2">면적 범위 (㎡) <span className="font-normal text-toss-text-ter">(선택)</span></p>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.min_area}
+                    onChange={(e) => setForm((f) => ({ ...f, min_area: e.target.value.replace(/[^0-9.]/g, "") }))}
+                    placeholder="최소 (예: 59)"
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
+                  />
+                  <span className="text-toss-text-ter text-sm">~</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={form.max_area}
+                    onChange={(e) => setForm((f) => ({ ...f, max_area: e.target.value.replace(/[^0-9.]/g, "") }))}
+                    placeholder="최대 (예: 85)"
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
+                  />
+                </div>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {[["소형", "33", "59"], ["중형", "59", "85"], ["대형", "85", "135"]].map(([label, min, max]) => (
+                    <button
+                      key={label}
+                      onClick={() => setForm((f) => ({ ...f, min_area: min, max_area: max }))}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-toss-surface text-toss-text-sub active:bg-toss-border transition-colors"
+                    >
+                      {label} ({min}~{max}㎡)
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* 가격 */}
+              {/* 호가 범위 */}
               <div>
-                <p className="text-xs font-semibold text-toss-text-sub mb-2">호가 (원) <span className="font-normal text-toss-text-ter">(선택)</span></p>
-                <input type="text" inputMode="numeric" value={form.price}
-                  onChange={(e) => setForm((f) => ({ ...f, price: e.target.value.replace(/[^0-9]/g, "") }))}
-                  placeholder="예: 900000000"
-                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
-                {form.price && !isNaN(parseInt(form.price)) && (
-                  <p className="text-xs text-toss-blue mt-1 pl-1">{formatKRW(parseInt(form.price))}</p>
+                <p className="text-xs font-semibold text-toss-text-sub mb-2">
+                  호가 범위 (원) <span className="font-normal text-toss-text-ter">(선택)</span>
+                </p>
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.min_price}
+                    onChange={(e) => setForm((f) => ({ ...f, min_price: e.target.value.replace(/[^0-9]/g, "") }))}
+                    placeholder="최소"
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
+                  />
+                  <span className="text-toss-text-ter text-sm">~</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={form.max_price}
+                    onChange={(e) => setForm((f) => ({ ...f, max_price: e.target.value.replace(/[^0-9]/g, "") }))}
+                    placeholder="최대"
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
+                  />
+                </div>
+                {(form.min_price || form.max_price) && (
+                  <p className="text-xs text-toss-blue mt-1 pl-1">
+                    {form.min_price ? formatKRW(parseInt(form.min_price, 10)) : "0"} ~ {form.max_price ? formatKRW(parseInt(form.max_price, 10)) : "제한 없음"}
+                  </p>
                 )}
-              </div>
-
-              {/* 면적 + 층수 */}
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-toss-text-sub mb-2">면적 (㎡)</p>
-                  <input type="text" inputMode="decimal" value={form.area}
-                    onChange={(e) => setForm((f) => ({ ...f, area: e.target.value }))}
-                    placeholder="예: 84.7"
-                    className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {[["~5억", "", "500000000"], ["5~10억", "500000000", "1000000000"], ["10억~", "1000000000", ""]].map(([label, min, max]) => (
+                    <button
+                      key={label}
+                      onClick={() => setForm((f) => ({ ...f, min_price: min, max_price: max }))}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-toss-surface text-toss-text-sub active:bg-toss-border transition-colors"
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-toss-text-sub mb-2">층수</p>
-                  <input type="text" value={form.floor}
-                    onChange={(e) => setForm((f) => ({ ...f, floor: e.target.value }))}
-                    placeholder="예: 15"
-                    className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
-                </div>
-              </div>
-
-              {/* 네이버 부동산 */}
-              <div>
-                <p className="text-xs font-semibold text-toss-text-sub mb-2">네이버 부동산 링크 <span className="font-normal text-toss-text-ter">(선택)</span></p>
-                <button
-                  type="button"
-                  onClick={() => window.open("https://new.land.naver.com/", "_blank")}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-toss-border bg-green-50 text-sm mb-2 active:bg-green-100 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">🏠</span>
-                    <span className="font-semibold text-green-700">네이버 부동산 열기</span>
-                  </div>
-                  <span className="text-xs text-green-600">매물 찾기 →</span>
-                </button>
-                <p className="text-xs text-toss-text-ter mb-2">네이버 부동산에서 매물을 찾은 뒤 URL을 복사해 붙여넣기하세요</p>
-                <input type="url" value={form.naver_url}
-                  onChange={(e) => setForm((f) => ({ ...f, naver_url: e.target.value }))}
-                  placeholder="https://new.land.naver.com/..."
-                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
               </div>
 
               {/* 메모 */}
               <div>
                 <p className="text-xs font-semibold text-toss-text-sub mb-2">메모 <span className="font-normal text-toss-text-ter">(선택)</span></p>
-                <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-                  placeholder="주변 환경, 교통, 학군 등 메모..."
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+                  placeholder="학군, 교통, 입지 등 메모..."
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue resize-none" />
+                  className="w-full px-4 py-3 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue resize-none"
+                />
               </div>
 
               {/* 공개 여부 */}
@@ -328,11 +421,14 @@ export default function WishlistPage() {
                 <p className="text-xs font-semibold text-toss-text-sub mb-2">공개 여부</p>
                 <div className="flex gap-2">
                   {(["family", "private"] as Visibility[]).map((v) => (
-                    <button key={v} onClick={() => setForm((f) => ({ ...f, visibility: v }))}
+                    <button
+                      key={v}
+                      onClick={() => setForm((f) => ({ ...f, visibility: v }))}
                       className={clsx("flex-1 py-2.5 text-sm font-medium rounded-xl transition-colors", {
                         "bg-toss-blue text-white": form.visibility === v,
                         "bg-toss-surface text-toss-text-sub": form.visibility !== v,
-                      })}>
+                      })}
+                    >
                       {v === "family" ? "🏠 가족 공유" : "🔒 나만 보기"}
                     </button>
                   ))}
@@ -343,8 +439,11 @@ export default function WishlistPage() {
             </div>
 
             <div className="px-5 pb-8 pt-3 flex-shrink-0 border-t border-toss-border">
-              <button onClick={handleSave} disabled={saving}
-                className="w-full py-4 bg-toss-blue disabled:bg-toss-border text-white font-semibold rounded-2xl">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full py-4 bg-toss-blue disabled:bg-toss-border text-white font-semibold rounded-2xl"
+              >
                 {saving ? "저장 중..." : "저장하기"}
               </button>
             </div>

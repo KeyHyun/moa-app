@@ -13,6 +13,7 @@ export interface Transaction {
   user_name?: string;
   visibility?: "family" | "private";
   card_name?: string;
+  sub_category?: string;
 }
 
 interface SpendingState {

@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
-  const { type, category, amount, memo, date, visibility, card_name } = body;
+  const { type, category, amount, memo, date, visibility, card_name, sub_category } = body;
   if (!type || !category || !amount || !date)
     return NextResponse.json({ error: "필수 항목이 누락됐습니다." }, { status: 400 });
   const family = await getFamilyByUser(userId);
@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     date,
     visibility: visibility || "family",
     card_name: card_name || "",
+    sub_category: sub_category || "",
   });
   return NextResponse.json({ ok: true, id });
 }
