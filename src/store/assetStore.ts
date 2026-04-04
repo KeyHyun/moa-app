@@ -19,12 +19,15 @@ interface AssetState {
   assets: AssetItem[];
   isLoading: boolean;
   fetchAssets: () => Promise<void>;
+  setAssets: (assets: AssetItem[]) => void;
   get totalAsset(): number;
 }
 
 export const useAssetStore = create<AssetState>()((set, get) => ({
   assets: [],
   isLoading: false,
+
+  setAssets: (assets) => set({ assets }),
 
   fetchAssets: async () => {
     set({ isLoading: true });

@@ -1,15 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { formatKRW } from "@/lib/formatters";
-
-interface CardSummary {
-  card_name: string;
-  user_id: number;
-  user_name: string;
-  total: number;
-}
+import { useDashboardStore } from "@/store/dashboardStore";
 
 interface GroupedCard {
   card_name: string;
@@ -19,16 +12,8 @@ interface GroupedCard {
 
 export function CardSpendingWidget() {
   const now = new Date();
-  const [summary, setSummary] = useState<CardSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const summary = useDashboardStore((s) => s.cardSummary);
 
-  useEffect(() => {
-    fetch(`/api/cards?year=${now.getFullYear()}&month=${now.getMonth() + 1}`)
-      .then((r) => r.json())
-      .then((d) => { setSummary(d.summary || []); setLoading(false); });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 카드명으로 그룹화
   const grouped = summary.reduce<Record<string, GroupedCard>>((acc, row) => {
     if (!acc[row.card_name]) acc[row.card_name] = { card_name: row.card_name, total: 0, members: [] };
     acc[row.card_name].total += row.total;
@@ -49,13 +34,7 @@ export function CardSpendingWidget() {
         )}
       </div>
 
-      {loading ? (
-        <div className="px-5 pb-5 space-y-2">
-          {[1, 2].map((i) => (
-            <div key={i} className="h-10 bg-toss-surface rounded-xl animate-pulse" />
-          ))}
-        </div>
-      ) : groups.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="px-5 pb-5 text-center py-4">
           <p className="text-xs text-toss-text-ter">지출 입력 시 카드를 선택하면 여기에 표시돼요</p>
         </div>

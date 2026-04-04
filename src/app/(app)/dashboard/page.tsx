@@ -98,16 +98,23 @@ function CustomizeDrawer({ onClose }: { onClose: () => void }) {
 
 /* ── 메인 ── */
 export default function DashboardPage() {
-  const fetchAssets = useAssetStore((s) => s.fetchAssets);
-  const fetchTransactions = useSpendingStore((s) => s.fetchTransactions);
+  const setAssets = useAssetStore((s) => s.setAssets);
+  const setTransactions = useSpendingStore((s) => s.setTransactions);
+  const { setGoals, setCardSummary, setSnapshots, widgets } = useDashboardStore();
   const { user, logout } = useAuthStore();
-  const { widgets } = useDashboardStore();
   const [showCustomize, setShowCustomize] = useState(false);
 
   useEffect(() => {
-    fetchAssets();
-    fetchTransactions();
-  }, [fetchAssets, fetchTransactions]);
+    fetch("/api/dashboard")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.assets) setAssets(d.assets);
+        if (d.transactions) setTransactions(d.transactions);
+        if (d.goals) setGoals(d.goals);
+        if (d.cardSummary) setCardSummary(d.cardSummary);
+        if (d.snapshots) setSnapshots(d.snapshots);
+      });
+  }, [setAssets, setTransactions, setGoals, setCardSummary, setSnapshots]);
 
   const enabledWidgets = widgets.filter((w) => w.enabled);
 

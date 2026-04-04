@@ -5,6 +5,7 @@ import {
   AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { formatKRW } from "@/lib/formatters";
+import { useDashboardStore, SnapshotPoint } from "@/store/dashboardStore";
 
 type Period = { label: string; days: number };
 
@@ -14,9 +15,7 @@ const PERIODS: Period[] = [
   { label: "6M", days: 180 },
 ];
 
-interface Point { date: string; total: number }
-
-function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payload: Point }[] }) {
+function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payload: SnapshotPoint }[] }) {
   if (!active || !payload?.length) return null;
   const p = payload[0].payload;
   const d = new Date(p.date + "T00:00:00");
@@ -31,25 +30,29 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { payl
 }
 
 export function AssetTrendChart() {
+  const storeSnapshots = useDashboardStore((s) => s.snapshots);
   const [period, setPeriod] = useState<Period>(PERIODS[0]);
-  const [data, setData] = useState<Point[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<SnapshotPoint[]>([]);
+  const [loading, setLoading] = useState(false);
 
+  // 30일(기본)은 이미 store에 있으므로 바로 사용
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/asset-snapshots?days=${period.days}`)
-      .then((r) => r.json())
-      .then((d: Point[]) => setData(Array.isArray(d) ? d : []))
-      .finally(() => setLoading(false));
-  }, [period]);
+    if (period.days === 30) {
+      setData(storeSnapshots);
+    } else {
+      setLoading(true);
+      fetch(`/api/asset-snapshots?days=${period.days}`)
+        .then((r) => r.json())
+        .then((d: SnapshotPoint[]) => setData(Array.isArray(d) ? d : []))
+        .finally(() => setLoading(false));
+    }
+  }, [period, storeSnapshots]);
 
   const first = data[0]?.total ?? 0;
   const last = data[data.length - 1]?.total ?? 0;
   const diff = last - first;
   const diffPct = first > 0 ? ((diff / first) * 100).toFixed(1) : "0.0";
   const positive = diff >= 0;
-
-  // XAxis에 표시할 레이블 간격 계산
   const tickInterval = Math.max(1, Math.floor(data.length / 4) - 1);
 
   return (
@@ -63,9 +66,7 @@ export function AssetTrendChart() {
                 key={p.label}
                 onClick={() => setPeriod(p)}
                 className={`px-2 py-0.5 rounded-full text-xs font-semibold transition-colors ${
-                  period.label === p.label
-                    ? "bg-toss-blue text-white"
-                    : "text-toss-text-ter"
+                  period.label === p.label ? "bg-toss-blue text-white" : "text-toss-text-ter"
                 }`}
               >
                 {p.label}

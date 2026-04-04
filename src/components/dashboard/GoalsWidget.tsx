@@ -1,17 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { formatKRW } from "@/lib/formatters";
-
-interface Goal {
-  id: number;
-  name: string;
-  target_amount: number;
-  current_amount: number;
-  emoji: string;
-  deadline: string | null;
-}
+import { useDashboardStore } from "@/store/dashboardStore";
 
 function CircleProgress({ percent, size = 48 }: { percent: number; size?: number }) {
   const r = (size - 6) / 2;
@@ -32,17 +23,9 @@ function CircleProgress({ percent, size = 48 }: { percent: number; size?: number
 }
 
 export function GoalsWidget() {
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [loading, setLoading] = useState(true);
+  const goals = useDashboardStore((s) => s.goals);
 
-  useEffect(() => {
-    fetch("/api/goals")
-      .then((r) => r.json())
-      .then((data) => { if (Array.isArray(data)) setGoals(data); })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading || goals.length === 0) return null;
+  if (goals.length === 0) return null;
 
   return (
     <Card padding="none">

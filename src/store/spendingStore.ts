@@ -24,6 +24,7 @@ interface SpendingState {
   selectedType: "all" | "expense" | "income";
   isLoading: boolean;
   fetchTransactions: () => Promise<void>;
+  setTransactions: (transactions: Transaction[]) => void;
   addTransaction: (data: Omit<Transaction, "id" | "user_name" | "user_id">) => Promise<void>;
   updateTransaction: (id: number, data: Omit<Transaction, "id" | "user_name" | "user_id">) => Promise<void>;
   deleteTransaction: (id: number) => Promise<void>;
@@ -38,6 +39,8 @@ export const useSpendingStore = create<SpendingState>()((set, get) => ({
   selectedCategory: null,
   selectedType: "all",
   isLoading: false,
+
+  setTransactions: (transactions) => set({ transactions }),
 
   fetchTransactions: async () => {
     set({ isLoading: true });

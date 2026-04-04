@@ -28,17 +28,51 @@ const DEFAULT_WIDGETS: WidgetConfig[] = [
   { id: "cardSpending",     label: "카드별 지출",       enabled: true },
 ];
 
+export interface Goal {
+  id: number;
+  name: string;
+  target_amount: number;
+  current_amount: number;
+  emoji: string;
+  deadline: string | null;
+}
+
+export interface CardSummaryItem {
+  card_name: string;
+  user_id: number;
+  user_name: string;
+  total: number;
+}
+
+export interface SnapshotPoint {
+  date: string;
+  total: number;
+}
+
 interface DashboardState {
   widgets: WidgetConfig[];
+  goals: Goal[];
+  cardSummary: CardSummaryItem[];
+  snapshots: SnapshotPoint[];
   toggleWidget: (id: WidgetId) => void;
   moveWidget: (id: WidgetId, direction: "up" | "down") => void;
   isEnabled: (id: WidgetId) => boolean;
+  setGoals: (goals: Goal[]) => void;
+  setCardSummary: (summary: CardSummaryItem[]) => void;
+  setSnapshots: (snapshots: SnapshotPoint[]) => void;
 }
 
 export const useDashboardStore = create<DashboardState>()(
   persist(
     (set, get) => ({
       widgets: DEFAULT_WIDGETS,
+      goals: [],
+      cardSummary: [],
+      snapshots: [],
+
+      setGoals: (goals) => set({ goals }),
+      setCardSummary: (cardSummary) => set({ cardSummary }),
+      setSnapshots: (snapshots) => set({ snapshots }),
 
       toggleWidget: (id) =>
         set((s) => ({
