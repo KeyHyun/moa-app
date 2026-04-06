@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatKRW } from "@/lib/formatters";
 import { CategoryPicker } from "@/components/spending-form/CategoryPicker";
@@ -19,12 +20,6 @@ interface UserCard {
   card_name: string;
   card_type: string;
 }
-
-const CARD_TYPE_OPTIONS = [
-  { value: "credit", label: "신용카드" },
-  { value: "debit",  label: "체크카드" },
-  { value: "cash",   label: "현금" },
-];
 
 function todayStr() {
   const d = new Date();
@@ -52,10 +47,6 @@ function AddSpendingInner() {
   // 카드 관련
   const [cards, setCards] = useState<UserCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<string>("");
-  const [showAddCard, setShowAddCard] = useState(false);
-  const [newCardName, setNewCardName] = useState("");
-  const [newCardType, setNewCardType] = useState("credit");
-  const [addingCard, setAddingCard] = useState(false);
 
   const isEdit = Boolean(editId);
   const amount = parseInt(amountStr, 10) || 0;
@@ -80,28 +71,6 @@ function AddSpendingInner() {
   useEffect(() => {
     fetch("/api/cards").then((r) => r.json()).then((d) => setCards(d.cards || []));
   }, []);
-
-  const handleAddCard = async () => {
-    if (!newCardName.trim()) return;
-    setAddingCard(true);
-    try {
-      const res = await fetch("/api/cards", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card_name: newCardName.trim(), card_type: newCardType }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        const newCard: UserCard = { id: data.id, user_id: 0, user_name: "", card_name: newCardName.trim(), card_type: newCardType };
-        setCards((prev) => [...prev, newCard]);
-        setSelectedCard(newCardName.trim());
-        setNewCardName("");
-        setShowAddCard(false);
-      }
-    } finally {
-      setAddingCard(false);
-    }
-  };
 
   const handleSave = async () => {
     if (amount === 0 || saving) return;
@@ -208,47 +177,8 @@ function AddSpendingInner() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-toss-text-sub">사용 카드</p>
-              <button
-                onClick={() => setShowAddCard((v) => !v)}
-                className="text-xs text-toss-blue font-semibold"
-              >
-                {showAddCard ? "취소" : "+ 카드 등록"}
-              </button>
+              <Link href="/family" className="text-xs text-toss-blue font-semibold">카드 관리 →</Link>
             </div>
-
-            {/* 카드 등록 폼 */}
-            {showAddCard && (
-              <div className="mb-3 p-3 bg-toss-surface rounded-xl space-y-2">
-                <input
-                  type="text"
-                  value={newCardName}
-                  onChange={(e) => setNewCardName(e.target.value)}
-                  placeholder="카드명 (예: 현대카드M, 카카오뱅크 체크)"
-                  className="w-full px-3 py-2.5 rounded-lg border border-toss-border text-sm outline-none focus:border-toss-blue bg-white"
-                />
-                <div className="flex gap-2">
-                  {CARD_TYPE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setNewCardType(opt.value)}
-                      className={clsx("flex-1 py-2 text-xs font-semibold rounded-lg transition-colors", {
-                        "bg-toss-blue text-white": newCardType === opt.value,
-                        "bg-white text-toss-text-sub border border-toss-border": newCardType !== opt.value,
-                      })}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={handleAddCard}
-                  disabled={addingCard || !newCardName.trim()}
-                  className="w-full py-2.5 bg-toss-blue disabled:bg-toss-border text-white text-sm font-semibold rounded-lg"
-                >
-                  {addingCard ? "등록 중..." : "등록하기"}
-                </button>
-              </div>
-            )}
 
             {/* 카드 목록 */}
             <div className="flex flex-wrap gap-2">

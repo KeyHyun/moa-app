@@ -174,6 +174,9 @@ async function _initSchema() {
     "ALTER TABLE property_wishlist ADD COLUMN floor_max INTEGER",
     // session & webauthn
     "ALTER TABLE users ADD COLUMN session_version INTEGER NOT NULL DEFAULT 0",
+    // card billing info
+    "ALTER TABLE user_cards ADD COLUMN billing_day INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE user_cards ADD COLUMN benefit_target INTEGER NOT NULL DEFAULT 0",
   ];
   for (const sql of migrations) {
     try {
@@ -401,30 +404,34 @@ export async function getFamilyMembers(familyId: number) {
 }
 
 // ── Transactions ──
-export async function getTransactions(userId: number, familyId?: number, limit = 100, viewMode: "family" | "private" | "all" = "all") {
+export async function getTransactions(
+  userId: number, familyId?: number, limit = 100,
+  viewMode: "family" | "private" | "all" = "all",
+  fromDate?: string, toDate?: string,
+) {
   await ensureInit();
+  const dateClause = fromDate && toDate ? ` AND t.date >= '${fromDate}' AND t.date <= '${toDate}'` : "";
   let r;
   if (familyId) {
     if (viewMode === "private") {
       r = await client.execute({
-        sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND t.user_id = ? AND t.visibility = 'private' ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
+        sql: `SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND t.user_id = ? AND t.visibility = 'private'${dateClause} ORDER BY t.date DESC, t.created_at DESC LIMIT ?`,
         args: [familyId, userId, limit],
       });
     } else if (viewMode === "family") {
       r = await client.execute({
-        sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND t.visibility = 'family' ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
+        sql: `SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND t.visibility = 'family'${dateClause} ORDER BY t.date DESC, t.created_at DESC LIMIT ?`,
         args: [familyId, limit],
       });
     } else {
-      // all: family-shared + my private
       r = await client.execute({
-        sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND (t.visibility = 'family' OR t.user_id = ?) ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
+        sql: `SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.family_id = ? AND (t.visibility = 'family' OR t.user_id = ?)${dateClause} ORDER BY t.date DESC, t.created_at DESC LIMIT ?`,
         args: [familyId, userId, limit],
       });
     }
   } else {
     r = await client.execute({
-      sql: "SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.user_id = ? ORDER BY t.date DESC, t.created_at DESC LIMIT ?",
+      sql: `SELECT t.*, u.name as user_name FROM transactions t JOIN users u ON u.id = t.user_id WHERE t.user_id = ?${dateClause} ORDER BY t.date DESC, t.created_at DESC LIMIT ?`,
       args: [userId, limit],
     });
   }
@@ -640,16 +647,38 @@ export async function getUserCards(userId: number, familyId?: number) {
     user_name: String(row["user_name"]),
     card_name: String(row["card_name"]),
     card_type: String(row["card_type"]),
+    billing_day: Number(row["billing_day"] ?? 0),
+    benefit_target: Number(row["benefit_target"] ?? 0),
   }));
 }
 
-export async function insertUserCard(data: { user_id: number; family_id?: number | null; card_name: string; card_type: string }) {
+export async function insertUserCard(data: {
+  user_id: number; family_id?: number | null;
+  card_name: string; card_type: string;
+  billing_day?: number; benefit_target?: number;
+}) {
   await ensureInit();
   const r = await client.execute({
-    sql: "INSERT INTO user_cards (user_id, family_id, card_name, card_type) VALUES (?, ?, ?, ?)",
-    args: [data.user_id, data.family_id ?? null, data.card_name, data.card_type],
+    sql: "INSERT INTO user_cards (user_id, family_id, card_name, card_type, billing_day, benefit_target) VALUES (?, ?, ?, ?, ?, ?)",
+    args: [data.user_id, data.family_id ?? null, data.card_name, data.card_type, data.billing_day ?? 0, data.benefit_target ?? 0],
   });
   return Number(r.lastInsertRowid);
+}
+
+export async function updateUserCard(id: number, familyId: number | undefined, data: {
+  card_name?: string; card_type?: string; billing_day?: number; benefit_target?: number;
+}) {
+  await ensureInit();
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+  if (data.card_name !== undefined)     { sets.push("card_name = ?");     args.push(data.card_name); }
+  if (data.card_type !== undefined)     { sets.push("card_type = ?");     args.push(data.card_type); }
+  if (data.billing_day !== undefined)   { sets.push("billing_day = ?");   args.push(data.billing_day); }
+  if (data.benefit_target !== undefined){ sets.push("benefit_target = ?"); args.push(data.benefit_target); }
+  if (sets.length === 0) return;
+  const cond = familyId ? "id = ? AND family_id = ?" : "id = ?";
+  const condArgs: number[] = familyId ? [id, familyId] : [id];
+  await client.execute({ sql: `UPDATE user_cards SET ${sets.join(", ")} WHERE ${cond}`, args: [...args, ...condArgs] });
 }
 
 export async function deleteUserCard(id: number, userId: number) {
@@ -658,6 +687,15 @@ export async function deleteUserCard(id: number, userId: number) {
     sql: "DELETE FROM user_cards WHERE id = ? AND user_id = ?",
     args: [id, userId],
   });
+}
+
+export async function getCardPeriodSpending(familyId: number, cardName: string, fromDate: string, toDate: string): Promise<number> {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT COALESCE(SUM(amount), 0) as total FROM transactions WHERE family_id = ? AND card_name = ? AND type = 'expense' AND date >= ? AND date <= ?",
+    args: [familyId, cardName, fromDate, toDate],
+  });
+  return Number(r.rows[0]["total"] ?? 0);
 }
 
 export async function getCardSpendingSummary(familyId: number, year: number, month: number) {

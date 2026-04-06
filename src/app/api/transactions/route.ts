@@ -12,8 +12,24 @@ export async function GET(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const family = await getFamilyByUser(userId);
-  const limit = parseInt(req.nextUrl.searchParams.get("limit") || "100");
-  const items = await getTransactions(userId, family?.id, limit);
+  const p = req.nextUrl.searchParams;
+  const limit = parseInt(p.get("limit") || "500");
+
+  let fromDate: string | undefined;
+  let toDate: string | undefined;
+
+  if (p.get("from") && p.get("to")) {
+    fromDate = p.get("from")!;
+    toDate = p.get("to")!;
+  } else if (p.get("year") && p.get("month")) {
+    const year = p.get("year")!;
+    const month = p.get("month")!.padStart(2, "0");
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    fromDate = `${year}-${month}-01`;
+    toDate = `${year}-${month}-${lastDay}`;
+  }
+
+  const items = await getTransactions(userId, family?.id, limit, "all", fromDate, toDate);
   return NextResponse.json(items);
 }
 
