@@ -1,24 +1,23 @@
 import { ImageResponse } from "next/og";
+import fs from "fs";
+import path from "path";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
 export default function AppleIcon() {
+  const imgPath = path.join(process.cwd(), "public", "icon-512.png");
+  const imgData = fs.readFileSync(imgPath);
+  const base64 = imgData.toString("base64");
+
   return new ImageResponse(
-    <div
-      style={{
-        width: 180,
-        height: 180,
-        borderRadius: 40,
-        background: "linear-gradient(135deg, #3182F6, #1A56DB)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 100,
-      }}
-    >
-      💰
-    </div>,
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`data:image/png;base64,${base64}`}
+      width={180}
+      height={180}
+      alt="icon"
+    />,
     { ...size }
   );
 }
