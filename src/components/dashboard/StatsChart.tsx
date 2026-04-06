@@ -98,8 +98,14 @@ export function StatsChart() {
   const currentUser = useAuthStore((s) => s.user);
 
   const transactions = useMemo(() => {
-    if (viewMode === "내꺼만") return allTransactions.filter((t) => t.user_id === currentUser?.id);
-    if (viewMode === "공유만") return allTransactions.filter((t) => t.visibility === "family");
+    if (viewMode === "내꺼만")
+      // 내가 올린 것 중 나만 보는 거래 (family-visible은 "공유만"에서 집계)
+      return allTransactions.filter(
+        (t) => t.user_id === currentUser?.id && t.visibility === "private"
+      );
+    if (viewMode === "공유만")
+      // 가족 공개 거래 전체 (올린 사람 무관)
+      return allTransactions.filter((t) => t.visibility === "family");
     return allTransactions;
   }, [allTransactions, viewMode, currentUser]);
 
