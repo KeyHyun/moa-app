@@ -59,7 +59,7 @@ export default function SpendingPage() {
     if (sortOrder === "amount_desc") items = [...items].sort((a, b) => b.amount - a.amount);
     else if (sortOrder === "amount_asc") items = [...items].sort((a, b) => a.amount - b.amount);
     return items;
-  }, [transactions, viewMode, selectedDate, selectedType, selectedCategory, sortOrder]);
+  }, [transactions, viewMode, selectedDate, selectedType, selectedCategory, sortOrder, viewTarget, user?.id]);
 
   const totalIncome = visibleItems.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalExpense = visibleItems.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
