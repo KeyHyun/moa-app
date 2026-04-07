@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BottomNavBar } from "@/components/layout/BottomNavBar";
 import { useAuthStore } from "@/store/authStore";
+import { AmountLockProvider } from "@/components/ui/AmountLockProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, fetchMe } = useAuthStore();
@@ -26,6 +27,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="max-w-lg mx-auto relative min-h-screen">
         <main className="pb-24">{children}</main>
         <BottomNavBar />
+        <AmountLockProvider />
       </div>
     </div>
   );

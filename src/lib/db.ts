@@ -179,6 +179,8 @@ async function _initSchema() {
     "ALTER TABLE user_cards ADD COLUMN benefit_target INTEGER NOT NULL DEFAULT 0",
     // 개인 예산 분리
     "ALTER TABLE monthly_budgets ADD COLUMN personal_budget_amount INTEGER NOT NULL DEFAULT 0",
+    // 카드 공유 여부
+    "ALTER TABLE user_cards ADD COLUMN is_shared INTEGER NOT NULL DEFAULT 0",
   ];
   for (const sql of migrations) {
     try {
@@ -633,9 +635,12 @@ export async function getUserCards(userId: number, familyId?: number) {
   await ensureInit();
   let r;
   if (familyId) {
+    // 내 카드 전부 + 가족 중 공유된 카드
     r = await client.execute({
-      sql: "SELECT uc.*, u.name as user_name FROM user_cards uc JOIN users u ON u.id = uc.user_id WHERE uc.family_id = ? ORDER BY uc.user_id, uc.created_at ASC",
-      args: [familyId],
+      sql: `SELECT uc.*, u.name as user_name FROM user_cards uc JOIN users u ON u.id = uc.user_id
+            WHERE uc.family_id = ? AND (uc.user_id = ? OR uc.is_shared = 1)
+            ORDER BY uc.user_id = ? DESC, uc.created_at ASC`,
+      args: [familyId, userId, userId],
     });
   } else {
     r = await client.execute({
@@ -651,6 +656,7 @@ export async function getUserCards(userId: number, familyId?: number) {
     card_type: String(row["card_type"]),
     billing_day: Number(row["billing_day"] ?? 0),
     benefit_target: Number(row["benefit_target"] ?? 0),
+    is_shared: Number(row["is_shared"] ?? 0) === 1,
   }));
 }
 
@@ -668,7 +674,7 @@ export async function insertUserCard(data: {
 }
 
 export async function updateUserCard(id: number, familyId: number | undefined, data: {
-  card_name?: string; card_type?: string; billing_day?: number; benefit_target?: number;
+  card_name?: string; card_type?: string; billing_day?: number; benefit_target?: number; is_shared?: boolean;
 }) {
   await ensureInit();
   const sets: string[] = [];
@@ -677,6 +683,7 @@ export async function updateUserCard(id: number, familyId: number | undefined, d
   if (data.card_type !== undefined)     { sets.push("card_type = ?");     args.push(data.card_type); }
   if (data.billing_day !== undefined)   { sets.push("billing_day = ?");   args.push(data.billing_day); }
   if (data.benefit_target !== undefined){ sets.push("benefit_target = ?"); args.push(data.benefit_target); }
+  if (data.is_shared !== undefined)     { sets.push("is_shared = ?");     args.push(data.is_shared ? 1 : 0); }
   if (sets.length === 0) return;
   const cond = familyId ? "id = ? AND family_id = ?" : "id = ?";
   const condArgs: number[] = familyId ? [id, familyId] : [id];

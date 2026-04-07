@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { id, card_name, card_type, billing_day, benefit_target } = await req.json();
+  const { id, card_name, card_type, billing_day, benefit_target, is_shared } = await req.json();
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const family = await getFamilyByUser(userId);
   await updateUserCard(Number(id), family?.id, {
@@ -89,6 +89,7 @@ export async function PATCH(req: NextRequest) {
     ...(card_type !== undefined && { card_type }),
     ...(billing_day !== undefined && { billing_day: Number(billing_day) }),
     ...(benefit_target !== undefined && { benefit_target: Number(benefit_target) }),
+    ...(is_shared !== undefined && { is_shared: Boolean(is_shared) }),
   });
   return NextResponse.json({ ok: true });
 }

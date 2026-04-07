@@ -38,6 +38,7 @@ interface UserCard {
   benefit_target: number;
   period_spending: number;
   billing_period: BillingPeriod;
+  is_shared: boolean;
 }
 
 const CARD_TYPE_OPTIONS = [
@@ -415,8 +416,188 @@ export default function FamilyPage() {
             )}
           </div>
 
+          {/* 카드 관리 */}
+          <div className="mx-4 mt-4">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <p className="text-xs font-semibold text-toss-text-ter">💳 카드 관리</p>
+              <button
+                onClick={() => { setShowAddCard((v) => !v); setEditingCard(null); setNewCardName(""); setNewCardType("credit"); setNewBillingDay(""); setNewBenefitTarget(""); }}
+                className="text-xs text-toss-blue font-semibold"
+              >
+                {showAddCard ? "취소" : "+ 카드 추가"}
+              </button>
+            </div>
+
+            {/* 카드 추가 폼 */}
+            {showAddCard && (
+              <div className="mb-3 p-4 bg-white rounded-2xl shadow-sm space-y-3">
+                <p className="text-sm font-semibold text-toss-text">새 카드 등록</p>
+                <input type="text" value={newCardName} onChange={(e) => setNewCardName(e.target.value)}
+                  placeholder="카드명 (예: 현대카드M)" className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                <div className="flex gap-2">
+                  {CARD_TYPE_OPTIONS.map((opt) => (
+                    <button key={opt.value} onClick={() => setNewCardType(opt.value)}
+                      className={clsx("flex-1 py-2 text-xs font-semibold rounded-xl transition-colors", {
+                        "bg-toss-blue text-white": newCardType === opt.value,
+                        "bg-toss-surface text-toss-text-sub": newCardType !== opt.value,
+                      })}>
+                      {opt.icon} {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <p className="text-xs text-toss-text-ter mb-1">결제일</p>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="1" max="31" value={newBillingDay} onChange={(e) => setNewBillingDay(e.target.value)}
+                        placeholder="15" className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                      <span className="text-xs text-toss-text-ter">일</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-toss-text-ter mb-1">혜택 목표</p>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="0" value={newBenefitTarget} onChange={(e) => setNewBenefitTarget(e.target.value)}
+                        placeholder="300000" className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                      <span className="text-xs text-toss-text-ter">원</span>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={handleAddCard} disabled={cardSaving || !newCardName.trim()}
+                  className="w-full py-3 bg-toss-blue disabled:bg-toss-border text-white text-sm font-semibold rounded-xl">
+                  {cardSaving ? "등록 중..." : "등록하기"}
+                </button>
+              </div>
+            )}
+
+            {/* 카드 편집 폼 */}
+            {editingCard && (
+              <div className="mb-3 p-4 bg-white rounded-2xl shadow-sm space-y-3 border border-toss-blue/30">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-toss-text">카드 수정</p>
+                  <button onClick={() => setEditingCard(null)} className="text-xs text-toss-text-ter">취소</button>
+                </div>
+                <input type="text" value={newCardName} onChange={(e) => setNewCardName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                <div className="flex gap-2">
+                  {CARD_TYPE_OPTIONS.map((opt) => (
+                    <button key={opt.value} onClick={() => setNewCardType(opt.value)}
+                      className={clsx("flex-1 py-2 text-xs font-semibold rounded-xl transition-colors", {
+                        "bg-toss-blue text-white": newCardType === opt.value,
+                        "bg-toss-surface text-toss-text-sub": newCardType !== opt.value,
+                      })}>
+                      {opt.icon} {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <p className="text-xs text-toss-text-ter mb-1">결제일</p>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="1" max="31" value={newBillingDay} onChange={(e) => setNewBillingDay(e.target.value)}
+                        placeholder="15" className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                      <span className="text-xs text-toss-text-ter">일</span>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-toss-text-ter mb-1">혜택 목표</p>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="0" value={newBenefitTarget} onChange={(e) => setNewBenefitTarget(e.target.value)}
+                        placeholder="300000" className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue" />
+                      <span className="text-xs text-toss-text-ter">원</span>
+                    </div>
+                  </div>
+                </div>
+                <button onClick={handleEditCard} disabled={cardSaving}
+                  className="w-full py-3 bg-toss-blue disabled:bg-toss-border text-white text-sm font-semibold rounded-xl">
+                  {cardSaving ? "저장 중..." : "저장하기"}
+                </button>
+              </div>
+            )}
+
+            {/* 카드 목록 */}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              {cardsLoading ? (
+                <div className="px-5 py-4 text-sm text-toss-text-ter">불러오는 중...</div>
+              ) : cards.length === 0 ? (
+                <div className="px-5 py-6 text-center">
+                  <p className="text-sm text-toss-text-sub">등록된 카드가 없습니다</p>
+                  <p className="text-xs text-toss-text-ter mt-1">+ 카드 추가를 눌러 등록하세요</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-toss-border">
+                  {cards.map((card) => {
+                    const typeOpt = CARD_TYPE_OPTIONS.find((o) => o.value === card.card_type);
+                    const spent = card.period_spending;
+                    const target = card.benefit_target;
+                    const remaining = target > 0 ? Math.max(0, target - spent) : 0;
+                    const progress = target > 0 ? Math.min(100, (spent / target) * 100) : 0;
+                    const period = card.billing_period;
+                    const achieved = target > 0 && spent >= target;
+                    const isMyCard = card.user_id === user?.id;
+                    return (
+                      <div key={card.id} className="px-5 py-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-xl flex-shrink-0">{typeOpt?.icon ?? "💳"}</span>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-sm font-semibold text-toss-text truncate">{card.card_name}</p>
+                                {card.is_shared && <span className="text-xs bg-toss-blue-light text-toss-blue px-1.5 py-0.5 rounded-full flex-shrink-0">공유중</span>}
+                                {!isMyCard && <span className="text-xs bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">{card.user_name}</span>}
+                              </div>
+                              <p className="text-xs text-toss-text-ter">{typeOpt?.label}{card.billing_day > 0 ? ` · 매월 ${card.billing_day}일` : ""}</p>
+                            </div>
+                          </div>
+                          {isMyCard && (
+                            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                              <button
+                                onClick={async () => {
+                                  await fetch("/api/cards", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: card.id, is_shared: !card.is_shared }) });
+                                  fetchCards();
+                                }}
+                                className={`text-xs font-medium px-2 py-0.5 rounded-full ${card.is_shared ? "bg-toss-blue text-white" : "bg-toss-surface text-toss-text-sub"}`}
+                              >
+                                {card.is_shared ? "공유ON" : "공유"}
+                              </button>
+                              <button onClick={() => startEditCard(card)} className="text-xs text-toss-blue font-medium">수정</button>
+                              <button onClick={() => handleDeleteCard(card.id)} className="text-xs text-toss-red font-medium">삭제</button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="bg-toss-surface rounded-xl p-3 space-y-2">
+                          {card.billing_day > 0 && (
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-toss-text-ter truncate">결제주기 {period.from.slice(5).replace("-", "/")} ~ {period.nextBilling.slice(5).replace("-", "/")}</span>
+                              <span className="text-toss-text-sub font-medium flex-shrink-0 ml-2">D-{period.daysLeft}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-toss-text-sub">이번 주기 지출</span>
+                            <span className="text-sm font-bold text-toss-text">{formatKRW(spent)}</span>
+                          </div>
+                          {target > 0 && (
+                            <>
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-toss-text-ter">혜택 목표 {formatKRW(target)}</span>
+                                {achieved ? <span className="text-toss-green font-semibold">🎉 달성!</span> : <span className="text-toss-text-sub">{formatKRW(remaining)} 더 필요</span>}
+                              </div>
+                              <div className="w-full h-2 bg-white rounded-full overflow-hidden">
+                                <div className={clsx("h-full rounded-full transition-all", achieved ? "bg-toss-green" : "bg-toss-blue")} style={{ width: `${progress}%` }} />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* 기능 메뉴 */}
-          <div className="mx-4">
+          <div className="mx-4 mt-4">
             <p className="text-xs font-semibold text-toss-text-ter mb-2 px-1">기능</p>
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               {menuItems.map((item, i) => (
@@ -439,250 +620,6 @@ export default function FamilyPage() {
                   </svg>
                 </Link>
               ))}
-            </div>
-          </div>
-
-          {/* 카드 관리 */}
-          <div className="mx-4 mt-4">
-            <div className="flex items-center justify-between mb-2 px-1">
-              <p className="text-xs font-semibold text-toss-text-ter">💳 카드 관리</p>
-              <button
-                onClick={() => { setShowAddCard((v) => !v); setEditingCard(null); setNewCardName(""); setNewCardType("credit"); setNewBillingDay(""); setNewBenefitTarget(""); }}
-                className="text-xs text-toss-blue font-semibold"
-              >
-                {showAddCard ? "취소" : "+ 카드 추가"}
-              </button>
-            </div>
-
-            {/* 카드 추가 폼 */}
-            {showAddCard && (
-              <div className="mb-3 p-4 bg-white rounded-2xl shadow-sm space-y-3">
-                <p className="text-sm font-semibold text-toss-text">새 카드 등록</p>
-                <input
-                  type="text"
-                  value={newCardName}
-                  onChange={(e) => setNewCardName(e.target.value)}
-                  placeholder="카드명 (예: 현대카드M, 카카오뱅크 체크)"
-                  className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
-                />
-                <div className="flex gap-2">
-                  {CARD_TYPE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setNewCardType(opt.value)}
-                      className={clsx("flex-1 py-2 text-xs font-semibold rounded-xl transition-colors", {
-                        "bg-toss-blue text-white": newCardType === opt.value,
-                        "bg-toss-surface text-toss-text-sub": newCardType !== opt.value,
-                      })}
-                    >
-                      {opt.icon} {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <p className="text-xs text-toss-text-ter mb-1">결제일 (매월)</p>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="1" max="31"
-                        value={newBillingDay}
-                        onChange={(e) => setNewBillingDay(e.target.value)}
-                        placeholder="예: 15"
-                        className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
-                      />
-                      <span className="text-xs text-toss-text-ter whitespace-nowrap">일</span>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-toss-text-ter mb-1">혜택 목표 지출</p>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={newBenefitTarget}
-                        onChange={(e) => setNewBenefitTarget(e.target.value)}
-                        placeholder="예: 300000"
-                        className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
-                      />
-                      <span className="text-xs text-toss-text-ter">원</span>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleAddCard}
-                  disabled={cardSaving || !newCardName.trim()}
-                  className="w-full py-3 bg-toss-blue disabled:bg-toss-border text-white text-sm font-semibold rounded-xl"
-                >
-                  {cardSaving ? "등록 중..." : "등록하기"}
-                </button>
-              </div>
-            )}
-
-            {/* 카드 편집 폼 */}
-            {editingCard && (
-              <div className="mb-3 p-4 bg-white rounded-2xl shadow-sm space-y-3 border border-toss-blue/30">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-toss-text">카드 수정</p>
-                  <button onClick={() => setEditingCard(null)} className="text-xs text-toss-text-ter">취소</button>
-                </div>
-                <input
-                  type="text"
-                  value={newCardName}
-                  onChange={(e) => setNewCardName(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
-                />
-                <div className="flex gap-2">
-                  {CARD_TYPE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setNewCardType(opt.value)}
-                      className={clsx("flex-1 py-2 text-xs font-semibold rounded-xl transition-colors", {
-                        "bg-toss-blue text-white": newCardType === opt.value,
-                        "bg-toss-surface text-toss-text-sub": newCardType !== opt.value,
-                      })}
-                    >
-                      {opt.icon} {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <p className="text-xs text-toss-text-ter mb-1">결제일 (매월)</p>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="1" max="31"
-                        value={newBillingDay}
-                        onChange={(e) => setNewBillingDay(e.target.value)}
-                        placeholder="예: 15"
-                        className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
-                      />
-                      <span className="text-xs text-toss-text-ter whitespace-nowrap">일</span>
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs text-toss-text-ter mb-1">혜택 목표 지출</p>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={newBenefitTarget}
-                        onChange={(e) => setNewBenefitTarget(e.target.value)}
-                        placeholder="예: 300000"
-                        className="w-full px-3 py-2.5 rounded-xl border border-toss-border text-sm outline-none focus:border-toss-blue"
-                      />
-                      <span className="text-xs text-toss-text-ter">원</span>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={handleEditCard}
-                  disabled={cardSaving}
-                  className="w-full py-3 bg-toss-blue disabled:bg-toss-border text-white text-sm font-semibold rounded-xl"
-                >
-                  {cardSaving ? "저장 중..." : "저장하기"}
-                </button>
-              </div>
-            )}
-
-            {/* 카드 목록 */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              {cardsLoading ? (
-                <div className="px-5 py-4 text-sm text-toss-text-ter">불러오는 중...</div>
-              ) : cards.length === 0 ? (
-                <div className="px-5 py-6 text-center">
-                  <p className="text-sm text-toss-text-sub">등록된 카드가 없습니다</p>
-                  <p className="text-xs text-toss-text-ter mt-1">위의 + 카드 추가 버튼을 눌러 등록하세요</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-toss-border">
-                  {cards.map((card) => {
-                    const typeOpt = CARD_TYPE_OPTIONS.find((o) => o.value === card.card_type);
-                    const spent = card.period_spending;
-                    const target = card.benefit_target;
-                    const remaining = target > 0 ? Math.max(0, target - spent) : 0;
-                    const progress = target > 0 ? Math.min(100, (spent / target) * 100) : 0;
-                    const period = card.billing_period;
-                    const achieved = target > 0 && spent >= target;
-
-                    return (
-                      <div key={card.id} className="px-5 py-4">
-                        {/* 카드 헤더 */}
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-xl">{typeOpt?.icon ?? "💳"}</span>
-                            <div>
-                              <p className="text-sm font-semibold text-toss-text">{card.card_name}</p>
-                              <p className="text-xs text-toss-text-ter">
-                                {typeOpt?.label} · {card.user_name}
-                                {card.billing_day > 0 && ` · 매월 ${card.billing_day}일 결제`}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => startEditCard(card)}
-                              className="text-xs text-toss-blue font-medium"
-                            >
-                              수정
-                            </button>
-                            <button
-                              onClick={() => handleDeleteCard(card.id)}
-                              className="text-xs text-toss-red font-medium"
-                            >
-                              삭제
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* 지출 현황 */}
-                        <div className="bg-toss-surface rounded-xl p-3 space-y-2">
-                          {/* 결제 주기 */}
-                          {card.billing_day > 0 && (
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-toss-text-ter">
-                                결제주기 {period.from.slice(5).replace("-", "/")} ~ {period.nextBilling.slice(5).replace("-", "/")}
-                              </span>
-                              <span className="text-toss-text-sub font-medium">
-                                다음 결제까지 {period.daysLeft}일
-                              </span>
-                            </div>
-                          )}
-
-                          {/* 이번 주기 지출 */}
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-toss-text-sub">이번 주기 지출</span>
-                            <span className="text-sm font-bold text-toss-text">{formatKRW(spent)}</span>
-                          </div>
-
-                          {/* 목표 지출 진행률 */}
-                          {target > 0 && (
-                            <>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-toss-text-ter">혜택 목표 {formatKRW(target)}</span>
-                                {achieved ? (
-                                  <span className="text-toss-green font-semibold">🎉 달성!</span>
-                                ) : (
-                                  <span className="text-toss-text-sub">
-                                    {formatKRW(remaining)} 더 필요
-                                  </span>
-                                )}
-                              </div>
-                              <div className="w-full h-2 bg-white rounded-full overflow-hidden">
-                                <div
-                                  className={clsx("h-full rounded-full transition-all", achieved ? "bg-toss-green" : "bg-toss-blue")}
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
 

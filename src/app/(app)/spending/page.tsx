@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useSpendingStore, ViewMode } from "@/store/spendingStore";
+import { useAuthStore } from "@/store/authStore";
 import { TopBar } from "@/components/layout/TopBar";
 import { CategoryFilterBar } from "@/components/spending/CategoryFilterBar";
 import { SpendingItem } from "@/components/spending/SpendingItem";
@@ -34,6 +35,8 @@ export default function SpendingPage() {
     dateRange, setDateRange,
   } = useSpendingStore();
 
+  const user = useAuthStore((s) => s.user);
+  const [viewTarget, setViewTarget] = useState<"mine" | "family">("family");
   const [sortOrder, setSortOrder] = useState<SortOrder>("time");
   const [rangeFrom, setRangeFrom] = useState(dateRange.from);
   const [rangeTo, setRangeTo] = useState(dateRange.to);
@@ -43,12 +46,14 @@ export default function SpendingPage() {
     fetchTransactionsByMonth(selectedMonth.year, selectedMonth.month);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // 뷰모드별 필터링
+  // 뷰모드 + 내/가족 필터링
   const visibleItems = useMemo(() => {
     let items = transactions.filter((t) => {
       if (viewMode === "day" && !isSameDay(parseLocalDate(t.date), selectedDate)) return false;
       if (selectedType !== "all" && t.type !== selectedType) return false;
       if (selectedCategory && t.category !== selectedCategory) return false;
+      // 내 거래만 / 가족 전체
+      if (viewTarget === "mine" && t.user_id !== user?.id) return false;
       return true;
     });
     if (sortOrder === "amount_desc") items = [...items].sort((a, b) => b.amount - a.amount);
@@ -102,25 +107,41 @@ export default function SpendingPage() {
 
       {/* Sticky header */}
       <div className="sticky top-14 z-30 bg-white shadow-sm">
-        {/* 뷰모드 탭 */}
-        <div className="flex border-b border-toss-border">
-          {(["day", "month", "range"] as ViewMode[]).map((mode) => {
-            const labels = { day: "일별", month: "월별", range: "기간" };
-            return (
+        {/* 뷰모드 탭 + 내/가족 전환 */}
+        <div className="flex items-center border-b border-toss-border">
+          <div className="flex flex-1">
+            {(["day", "month", "range"] as ViewMode[]).map((mode) => {
+              const labels = { day: "일별", month: "월별", range: "기간" };
+              return (
+                <button
+                  key={mode}
+                  onClick={() => handleViewModeChange(mode)}
+                  className={clsx(
+                    "flex-1 py-2.5 text-sm font-semibold transition-colors",
+                    viewMode === mode
+                      ? "text-toss-blue border-b-2 border-toss-blue"
+                      : "text-toss-text-sub"
+                  )}
+                >
+                  {labels[mode]}
+                </button>
+              );
+            })}
+          </div>
+          {/* 내/가족 전환 */}
+          <div className="flex bg-toss-surface rounded-lg overflow-hidden mx-2 flex-shrink-0">
+            {(["mine", "family"] as const).map((t) => (
               <button
-                key={mode}
-                onClick={() => handleViewModeChange(mode)}
-                className={clsx(
-                  "flex-1 py-2.5 text-sm font-semibold transition-colors",
-                  viewMode === mode
-                    ? "text-toss-blue border-b-2 border-toss-blue"
-                    : "text-toss-text-sub"
-                )}
+                key={t}
+                onClick={() => setViewTarget(t)}
+                className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                  viewTarget === t ? "bg-toss-blue text-white" : "text-toss-text-sub"
+                }`}
               >
-                {labels[mode]}
+                {t === "mine" ? "내것" : "가족"}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
         {/* 날짜 네비게이션 */}

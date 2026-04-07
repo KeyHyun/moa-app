@@ -22,8 +22,10 @@ export async function GET(req: NextRequest) {
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
   const today = now.toISOString().slice(0, 10);
 
-  // 가족 전체 지출 (family_id 기준)
-  const familyTx = await getTransactions(userId, family?.id, 1000, "all");
+  // 가족 공유 지출 (visibility='family' 거래만)
+  const familyTx = family
+    ? await getTransactions(userId, family.id, 1000, "family")
+    : await getTransactions(userId, undefined, 1000, "all");
   const familyMonthlyExpense = familyTx
     .filter((t) => t.type === "expense" && t.date.startsWith(monthStr))
     .reduce((sum, t) => sum + t.amount, 0);
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
     .filter((t) => t.type === "expense" && t.date === today)
     .reduce((sum, t) => sum + t.amount, 0);
 
-  // 내 개인 지출 (user_id 기준)
+  // 내 개인 지출 (내 거래 전체 - private + family 모두)
   const myTx = await getTransactions(userId, undefined, 1000, "all");
   const personalMonthlyExpense = myTx
     .filter((t) => t.type === "expense" && t.date.startsWith(monthStr))
