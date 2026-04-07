@@ -55,7 +55,7 @@ export const useSpendingStore = create<SpendingState>()((set, get) => {
     selectedDate: new Date(),
     selectedCategory: null,
     selectedType: "all",
-    viewMode: "day",
+    viewMode: "month",
     selectedMonth: { year: now.getFullYear(), month: now.getMonth() + 1 },
     dateRange: { from: todayYMD(), to: todayYMD() },
     isLoading: false,

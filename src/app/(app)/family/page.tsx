@@ -308,20 +308,13 @@ export default function FamilyPage() {
           <div className="mx-4 mt-4 mb-4 bg-white rounded-2xl shadow-sm overflow-hidden">
             {data.family ? (
               <>
+                {/* 헤더 */}
                 <div className="px-5 py-4 border-b border-toss-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-base font-bold text-toss-text">{data.family.name}</p>
-                      <p className="text-xs text-toss-text-ter mt-0.5">멤버 {data.members.length}명</p>
-                    </div>
-                    <button
-                      onClick={copyInviteCode}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-toss-blue-light text-toss-blue text-xs font-semibold rounded-pill"
-                    >
-                      {copied ? "✓ 복사됨" : `🔗 ${data.family.invite_code}`}
-                    </button>
-                  </div>
+                  <p className="text-base font-bold text-toss-text">{data.family.name}</p>
+                  <p className="text-xs text-toss-text-ter mt-0.5">멤버 {data.members.length}명</p>
                 </div>
+
+                {/* 멤버 목록 */}
                 <div className="divide-y divide-toss-border">
                   {data.members.map((m) => (
                     <div key={m.id} className="px-5 py-3.5 flex items-center gap-3">
@@ -340,8 +333,26 @@ export default function FamilyPage() {
                     </div>
                   ))}
                 </div>
-                <div className="px-5 py-3 bg-toss-surface">
-                  <p className="text-xs text-toss-text-ter">초대 코드를 공유해서 가족을 초대하세요</p>
+
+                {/* 초대 코드 섹션 */}
+                <div className="px-5 py-4 bg-toss-surface border-t border-toss-border">
+                  <p className="text-xs font-semibold text-toss-text-sub mb-2">👥 가족 초대하기</p>
+                  <p className="text-xs text-toss-text-ter mb-3">
+                    아래 코드를 공유하면 누구든 가족 그룹에 참여할 수 있어요 (인원 제한 없음)
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-white border border-toss-border rounded-xl px-4 py-3 text-center">
+                      <p className="text-xl font-bold tracking-widest text-toss-blue">
+                        {data.family.invite_code}
+                      </p>
+                    </div>
+                    <button
+                      onClick={copyInviteCode}
+                      className="px-4 py-3 bg-toss-blue text-white text-sm font-semibold rounded-xl whitespace-nowrap"
+                    >
+                      {copied ? "✓ 복사됨" : "코드 복사"}
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (

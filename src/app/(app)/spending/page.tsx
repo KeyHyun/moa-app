@@ -38,8 +38,10 @@ export default function SpendingPage() {
   const [rangeFrom, setRangeFrom] = useState(dateRange.from);
   const [rangeTo, setRangeTo] = useState(dateRange.to);
 
-  // 초기 로드
-  useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+  // 초기 로드 - 월별이 기본
+  useEffect(() => {
+    fetchTransactionsByMonth(selectedMonth.year, selectedMonth.month);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 뷰모드별 필터링
   const visibleItems = useMemo(() => {

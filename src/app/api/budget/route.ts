@@ -19,23 +19,35 @@ export async function GET(req: NextRequest) {
   const budget = await getMonthlyBudget(userId, year, month);
   const family = await getFamilyByUser(userId);
 
-  // 이번 달 지출 합계
-  const allTx = await getTransactions(userId, family?.id, 500, "all");
   const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-  const monthlyExpense = allTx
+  const today = now.toISOString().slice(0, 10);
+
+  // 가족 전체 지출 (family_id 기준)
+  const familyTx = await getTransactions(userId, family?.id, 1000, "all");
+  const familyMonthlyExpense = familyTx
     .filter((t) => t.type === "expense" && t.date.startsWith(monthStr))
     .reduce((sum, t) => sum + t.amount, 0);
+  const familyTodayExpense = familyTx
+    .filter((t) => t.type === "expense" && t.date === today)
+    .reduce((sum, t) => sum + t.amount, 0);
 
-  // 오늘까지 지출
-  const today = now.toISOString().slice(0, 10);
-  const todayExpense = allTx
+  // 내 개인 지출 (user_id 기준)
+  const myTx = await getTransactions(userId, undefined, 1000, "all");
+  const personalMonthlyExpense = myTx
+    .filter((t) => t.type === "expense" && t.date.startsWith(monthStr))
+    .reduce((sum, t) => sum + t.amount, 0);
+  const personalTodayExpense = myTx
     .filter((t) => t.type === "expense" && t.date === today)
     .reduce((sum, t) => sum + t.amount, 0);
 
   return NextResponse.json({
     budget,
-    monthlyExpense,
-    todayExpense,
+    // 가족 지출
+    monthlyExpense: familyMonthlyExpense,
+    todayExpense: familyTodayExpense,
+    // 개인 지출
+    personalMonthlyExpense,
+    personalTodayExpense,
     year,
     month,
   });
@@ -44,10 +56,15 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { year, month, budget_amount } = await req.json();
+  const { year, month, budget_amount, personal_budget_amount } = await req.json();
   if (!year || !month || budget_amount == null)
     return NextResponse.json({ error: "필수 항목 누락" }, { status: 400 });
   const family = await getFamilyByUser(userId);
-  await upsertMonthlyBudget(userId, family?.id ?? null, Number(year), Number(month), Number(budget_amount));
+  await upsertMonthlyBudget(
+    userId, family?.id ?? null,
+    Number(year), Number(month),
+    Number(budget_amount),
+    personal_budget_amount != null ? Number(personal_budget_amount) : undefined,
+  );
   return NextResponse.json({ ok: true });
 }

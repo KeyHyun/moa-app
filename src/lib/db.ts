@@ -177,6 +177,8 @@ async function _initSchema() {
     // card billing info
     "ALTER TABLE user_cards ADD COLUMN billing_day INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE user_cards ADD COLUMN benefit_target INTEGER NOT NULL DEFAULT 0",
+    // 개인 예산 분리
+    "ALTER TABLE monthly_budgets ADD COLUMN personal_budget_amount INTEGER NOT NULL DEFAULT 0",
   ];
   for (const sql of migrations) {
     try {
@@ -847,14 +849,22 @@ export async function getMonthlyBudget(userId: number, year: number, month: numb
     year: Number(row["year"]),
     month: Number(row["month"]),
     budget_amount: Number(row["budget_amount"]),
+    personal_budget_amount: Number(row["personal_budget_amount"] ?? 0),
   };
 }
 
-export async function upsertMonthlyBudget(userId: number, familyId: number | null, year: number, month: number, budgetAmount: number) {
+export async function upsertMonthlyBudget(
+  userId: number, familyId: number | null, year: number, month: number,
+  budgetAmount: number, personalBudgetAmount?: number,
+) {
   await ensureInit();
   await client.execute({
-    sql: "INSERT INTO monthly_budgets (user_id, family_id, year, month, budget_amount) VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id, year, month) DO UPDATE SET budget_amount = excluded.budget_amount",
-    args: [userId, familyId ?? null, year, month, budgetAmount],
+    sql: `INSERT INTO monthly_budgets (user_id, family_id, year, month, budget_amount, personal_budget_amount)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(user_id, year, month) DO UPDATE SET
+            budget_amount = excluded.budget_amount,
+            personal_budget_amount = CASE WHEN excluded.personal_budget_amount > 0 THEN excluded.personal_budget_amount ELSE personal_budget_amount END`,
+    args: [userId, familyId ?? null, year, month, budgetAmount, personalBudgetAmount ?? 0],
   });
 }
 
