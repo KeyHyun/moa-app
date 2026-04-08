@@ -35,17 +35,17 @@ export function SpendingSnapshotCard() {
           {todayItems.slice(0, 3).map((item) => {
             const cat = CATEGORY_CONFIG[item.category as SpendingCategory] ?? CATEGORY_CONFIG["기타"];
             return (
-              <div key={item.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div key={item.id} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm"
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-sm flex-shrink-0"
                     style={{ backgroundColor: cat.bg }}
                   >
                     {cat.icon}
                   </span>
-                  <span className="text-sm text-toss-text">{item.memo || item.category}</span>
+                  <span className="text-sm text-toss-text truncate">{item.memo || item.category}</span>
                 </div>
-                <span className="text-sm font-medium text-toss-red">-{formatKRW(item.amount)}</span>
+                <span className="text-sm font-medium text-toss-red flex-shrink-0">-{formatKRW(item.amount)}</span>
               </div>
             );
           })}

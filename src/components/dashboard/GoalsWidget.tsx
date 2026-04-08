@@ -46,9 +46,9 @@ export function GoalsWidget() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-toss-text truncate">{goal.name}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-xs text-toss-blue font-medium">{pct}%</span>
-                  <span className="text-xs text-toss-text-ter">
+                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                  <span className="text-xs text-toss-blue font-medium flex-shrink-0">{pct}%</span>
+                  <span className="text-xs text-toss-text-ter truncate">
                     {formatKRW(goal.current_amount)} / {formatKRW(goal.target_amount)}
                   </span>
                 </div>

@@ -90,7 +90,7 @@ export function AssetBreakdownList() {
                   {/* 개별 항목 (펼쳤을 때) */}
                   {isExpanded && items.map((asset) => (
                     <div key={asset.id} className="flex items-center justify-between px-5 py-3 bg-toss-surface border-t border-toss-border">
-                      <div className="min-w-0 pl-13">
+                      <div className="min-w-0 pl-12">
                         <p className="text-xs font-medium text-toss-text truncate">{asset.label}</p>
                         <p className="text-xs text-toss-text-ter truncate">
                           {asset.institution ? asset.institution : ""}

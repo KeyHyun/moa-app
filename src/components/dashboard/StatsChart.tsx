@@ -158,18 +158,18 @@ export function StatsChart() {
 
       <div className="px-4 pt-4 pb-5">
         {/* 수입/지출 요약 */}
-        <div className="flex gap-4 mb-4">
-          <div className="flex-1 bg-toss-surface rounded-xl px-3 py-2.5">
-            <p className="text-xs text-toss-text-ter mb-0.5">수입</p>
-            <p className="text-sm font-bold text-toss-green">+{formatKRW(totalIncome)}</p>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="bg-toss-surface rounded-xl px-2.5 py-2.5">
+            <p className="text-[10px] text-toss-text-ter mb-0.5">수입</p>
+            <p className="text-sm font-bold text-toss-green truncate">+{formatKRW(totalIncome)}</p>
           </div>
-          <div className="flex-1 bg-toss-surface rounded-xl px-3 py-2.5">
-            <p className="text-xs text-toss-text-ter mb-0.5">지출</p>
-            <p className="text-sm font-bold text-toss-red">-{formatKRW(totalExpense)}</p>
+          <div className="bg-toss-surface rounded-xl px-2.5 py-2.5">
+            <p className="text-[10px] text-toss-text-ter mb-0.5">지출</p>
+            <p className="text-sm font-bold text-toss-red truncate">-{formatKRW(totalExpense)}</p>
           </div>
-          <div className="flex-1 bg-toss-surface rounded-xl px-3 py-2.5">
-            <p className="text-xs text-toss-text-ter mb-0.5">순수익</p>
-            <p className={`text-sm font-bold ${totalIncome - totalExpense >= 0 ? "text-toss-green" : "text-toss-red"}`}>
+          <div className="bg-toss-surface rounded-xl px-2.5 py-2.5">
+            <p className="text-[10px] text-toss-text-ter mb-0.5">순수익</p>
+            <p className={`text-sm font-bold truncate ${totalIncome - totalExpense >= 0 ? "text-toss-green" : "text-toss-red"}`}>
               {totalIncome - totalExpense >= 0 ? "+" : ""}{formatKRW(totalIncome - totalExpense)}
             </p>
           </div>

@@ -95,7 +95,7 @@ function BudgetCard({
             <p className="text-xs text-toss-text-ter">{usedPct.toFixed(0)}% 사용</p>
           </div>
 
-          <p className="text-xs text-toss-text-ter mt-1">
+          <p className="text-xs text-toss-text-ter mt-1 leading-relaxed">
             {todayNum}일 기준 이상적 지출: {formatKRW(Math.round((budget / daysInMonth) * todayNum))}
             {usedPct > idealPct + 5 ? " · 지출이 빠른 편이에요" : usedPct < idealPct - 10 ? " · 절약하고 있어요 👍" : " · 적절한 속도예요"}
           </p>

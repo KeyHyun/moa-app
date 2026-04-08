@@ -236,10 +236,10 @@ export default function AssetsPage() {
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-semibold text-toss-text truncate">{asset.label}</p>
                     {asset.visibility === "private" && (
-                      <span className="text-xs bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">나만</span>
+                      <span className="text-[10px] bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">나만</span>
                     )}
                   </div>
-                  <p className="text-xs text-toss-text-ter mt-0.5">
+                  <p className="text-xs text-toss-text-ter mt-0.5 truncate">
                     {config.label}{asset.institution ? ` · ${asset.institution}` : ""}
                     {asset.user_name ? ` · ${asset.user_name}` : ""}
                   </p>

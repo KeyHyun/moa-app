@@ -537,39 +537,39 @@ export default function FamilyPage() {
                     const isMyCard = card.user_id === user?.id;
                     return (
                       <div key={card.id} className="px-5 py-4">
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span className="text-xl flex-shrink-0">{typeOpt?.icon ?? "💳"}</span>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="text-sm font-semibold text-toss-text truncate">{card.card_name}</p>
-                                {card.is_shared && <span className="text-xs bg-toss-blue-light text-toss-blue px-1.5 py-0.5 rounded-full flex-shrink-0">공유중</span>}
-                                {!isMyCard && <span className="text-xs bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">{card.user_name}</span>}
+                                {card.is_shared && <span className="text-[10px] bg-toss-blue-light text-toss-blue px-1.5 py-0.5 rounded-full flex-shrink-0">공유중</span>}
+                                {!isMyCard && <span className="text-[10px] bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">{card.user_name}</span>}
                               </div>
                               <p className="text-xs text-toss-text-ter">{typeOpt?.label}{card.billing_day > 0 ? ` · 매월 ${card.billing_day}일` : ""}</p>
                             </div>
                           </div>
                           {isMyCard && (
-                            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
                               <button
                                 onClick={async () => {
                                   await fetch("/api/cards", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: card.id, is_shared: !card.is_shared }) });
                                   fetchCards();
                                 }}
-                                className={`text-xs font-medium px-2 py-0.5 rounded-full ${card.is_shared ? "bg-toss-blue text-white" : "bg-toss-surface text-toss-text-sub"}`}
+                                className={`text-[10px] font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${card.is_shared ? "bg-toss-blue text-white" : "bg-toss-surface text-toss-text-sub"}`}
                               >
                                 {card.is_shared ? "공유ON" : "공유"}
                               </button>
-                              <button onClick={() => startEditCard(card)} className="text-xs text-toss-blue font-medium">수정</button>
-                              <button onClick={() => handleDeleteCard(card.id)} className="text-xs text-toss-red font-medium">삭제</button>
+                              <button onClick={() => startEditCard(card)} className="text-[10px] text-toss-blue font-medium whitespace-nowrap">수정</button>
+                              <button onClick={() => handleDeleteCard(card.id)} className="text-[10px] text-toss-red font-medium whitespace-nowrap">삭제</button>
                             </div>
                           )}
                         </div>
                         <div className="bg-toss-surface rounded-xl p-3 space-y-2">
                           {card.billing_day > 0 && (
-                            <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center justify-between text-xs gap-2">
                               <span className="text-toss-text-ter truncate">결제주기 {period.from.slice(5).replace("-", "/")} ~ {period.nextBilling.slice(5).replace("-", "/")}</span>
-                              <span className="text-toss-text-sub font-medium flex-shrink-0 ml-2">D-{period.daysLeft}</span>
+                              <span className="text-toss-text-sub font-medium flex-shrink-0">D-{period.daysLeft}</span>
                             </div>
                           )}
                           <div className="flex items-center justify-between">

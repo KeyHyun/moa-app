@@ -33,39 +33,39 @@ export function SpendingItem({ item }: SpendingItemProps) {
         >
           {cat.icon}
         </div>
-        <div>
-          <p className="text-sm font-semibold text-toss-text">{item.memo || item.category}</p>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-toss-text truncate">{item.memo || item.category}</p>
+          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
             <span
-              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
               style={{ color: cat.color, backgroundColor: cat.bg }}
             >
               {item.category}
               {item.sub_category ? ` > ${item.sub_category}` : ""}
             </span>
             {item.card_name && (
-              <span className="text-[10px] text-toss-text-sub bg-toss-surface px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] text-toss-text-sub bg-toss-surface px-1.5 py-0.5 rounded-full flex-shrink-0 truncate max-w-[100px]">
                 💳 {item.card_name}
               </span>
             )}
             {item.user_name && (
-              <span className="text-[10px] text-toss-text-ter">{item.user_name}</span>
+              <span className="text-[10px] text-toss-text-ter flex-shrink-0">{item.user_name}</span>
             )}
             {item.visibility === "private" && (
-              <span className="text-[10px] text-toss-text-ter bg-toss-surface px-1.5 py-0.5 rounded-full">🔒</span>
+              <span className="text-[10px] text-toss-text-ter bg-toss-surface px-1.5 py-0.5 rounded-full flex-shrink-0">🔒</span>
             )}
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5">
-        <p className={`text-sm font-semibold ${isExpense ? "text-toss-text" : "text-toss-green"}`}>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <p className={`text-sm font-semibold whitespace-nowrap ${isExpense ? "text-toss-text" : "text-toss-green"}`}>
           {isExpense ? "-" : "+"}
           {formatKRW(item.amount)}
         </p>
         {/* 수정 버튼 */}
         <button
           onClick={() => router.push(`/spending/add?id=${item.id}`)}
-          className="w-6 h-6 rounded-full bg-toss-surface flex items-center justify-center text-toss-text-ter hover:bg-toss-border transition-colors"
+          className="w-6 h-6 rounded-full bg-toss-surface flex items-center justify-center text-toss-text-ter hover:bg-toss-border transition-colors flex-shrink-0"
           aria-label="수정"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -75,7 +75,7 @@ export function SpendingItem({ item }: SpendingItemProps) {
         {/* 삭제 버튼 */}
         <button
           onClick={() => deleteTransaction(item.id)}
-          className="w-6 h-6 rounded-full bg-toss-surface flex items-center justify-center text-toss-text-ter hover:bg-toss-border transition-colors"
+          className="w-6 h-6 rounded-full bg-toss-surface flex items-center justify-center text-toss-text-ter hover:bg-toss-border transition-colors flex-shrink-0"
           aria-label="삭제"
         >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none">

@@ -32,31 +32,33 @@ export function CardSpendingWidget() {
 
   return (
     <Card padding="none">
-      <div className="px-5 pt-5 pb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-toss-text-sub">
-          💳 {now.getMonth() + 1}월 카드별 지출
-        </h3>
-        <div className="flex items-center gap-2">
-          {grandTotal > 0 && (
-            <p className="text-sm font-bold text-toss-red">
-              {maskedAmount(formatKRW(grandTotal), isAmountVisible)}
-            </p>
-          )}
-          {/* 전환 토글 */}
-          <div className="flex bg-toss-surface rounded-lg overflow-hidden ml-1">
-            {(["mine", "family"] as ViewTarget[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setViewTarget(t)}
-                className={`px-2 py-1 text-xs font-semibold transition-colors ${
-                  viewTarget === t ? "bg-toss-blue text-white" : "text-toss-text-sub"
-                }`}
-              >
-                {t === "mine" ? "내것" : "가족"}
-              </button>
-            ))}
+      <div className="px-5 pt-5 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-sm font-semibold text-toss-text-sub flex-shrink-0">
+            💳 {now.getMonth() + 1}월 카드별 지출
+          </h3>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* 전환 토글 */}
+            <div className="flex bg-toss-surface rounded-lg overflow-hidden">
+              {(["mine", "family"] as ViewTarget[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setViewTarget(t)}
+                  className={`px-2 py-1 text-xs font-semibold transition-colors ${
+                    viewTarget === t ? "bg-toss-blue text-white" : "text-toss-text-sub"
+                  }`}
+                >
+                  {t === "mine" ? "내것" : "가족"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+        {grandTotal > 0 && (
+          <p className="text-sm font-bold text-toss-red mt-2">
+            {maskedAmount(formatKRW(grandTotal), isAmountVisible)}
+          </p>
+        )}
       </div>
 
       {groups.length === 0 ? (

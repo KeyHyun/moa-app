@@ -226,19 +226,19 @@ export default function WishlistPage() {
                 <div className="px-5 py-4">
                   {/* 헤더 */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-10 h-10 rounded-xl bg-toss-surface flex items-center justify-center text-xl flex-shrink-0">
                         {pt.icon}
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-sm font-bold text-toss-text">{item.name}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-bold text-toss-text truncate">{item.name}</p>
                           {item.visibility === "private" && (
-                            <span className="text-[10px] bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full">나만</span>
+                            <span className="text-[10px] bg-toss-surface text-toss-text-ter px-1.5 py-0.5 rounded-full flex-shrink-0">나만</span>
                           )}
                         </div>
                         {item.location && (
-                          <p className="text-xs text-toss-text-sub mt-0.5">📍 {item.location}</p>
+                          <p className="text-xs text-toss-text-sub mt-0.5 truncate">📍 {item.location}</p>
                         )}
                       </div>
                     </div>
