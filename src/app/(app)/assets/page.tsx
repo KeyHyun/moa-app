@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { useAssetStore, AssetItem } from "@/store/assetStore";
 import { useAuthStore } from "@/store/authStore";
+import { useDashboardStore } from "@/store/dashboardStore";
 import { formatKRW } from "@/lib/formatters";
 import { ASSET_TYPE_CONFIG } from "@/lib/constants";
 import { AssetType, Visibility } from "@/types";
@@ -47,6 +48,7 @@ const emptyForm = (defaultUserId: number | null = null): AssetForm => ({
 export default function AssetsPage() {
   const { assets, isLoading, fetchAssets } = useAssetStore();
   const currentUser = useAuthStore((s) => s.user);
+  const viewMode2 = useDashboardStore((s) => s.viewMode);
   const [showForm, setShowForm] = useState(false);
   const [editTarget, setEditTarget] = useState<AssetItem | null>(null);
   const [form, setForm] = useState<AssetForm>(emptyForm());
@@ -55,7 +57,7 @@ export default function AssetsPage() {
   const [viewMode, setViewMode] = useState<"all" | "assets" | "liabilities">("all");
   const [members, setMembers] = useState<FamilyMember[]>([]);
 
-  useEffect(() => { fetchAssets(); }, [fetchAssets]);
+  useEffect(() => { fetchAssets(viewMode2); }, [fetchAssets, viewMode2]);
 
   useEffect(() => {
     fetch("/api/family").then((r) => r.json()).then((d) => {

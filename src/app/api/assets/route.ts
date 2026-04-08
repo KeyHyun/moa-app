@@ -19,8 +19,10 @@ async function recordSnapshot(userId: number) {
 export async function GET(req: NextRequest) {
   const userId = getUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { searchParams } = new URL(req.url);
+  const view = (searchParams.get("view") as "private" | "family") || "family";
   const family = await getFamilyByUser(userId);
-  const items = await getAssets(family?.id, userId);
+  const items = await getAssets(family?.id, userId, view);
   return NextResponse.json(items);
 }
 

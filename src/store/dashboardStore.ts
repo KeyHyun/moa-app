@@ -49,17 +49,21 @@ export interface SnapshotPoint {
   total: number;
 }
 
+type ViewMode = "private" | "family";
+
 interface DashboardState {
   widgets: WidgetConfig[];
   goals: Goal[];
   cardSummary: CardSummaryItem[];
   snapshots: SnapshotPoint[];
+  viewMode: ViewMode;
   toggleWidget: (id: WidgetId) => void;
   moveWidget: (id: WidgetId, direction: "up" | "down") => void;
   isEnabled: (id: WidgetId) => boolean;
   setGoals: (goals: Goal[]) => void;
   setCardSummary: (summary: CardSummaryItem[]) => void;
   setSnapshots: (snapshots: SnapshotPoint[]) => void;
+  setViewMode: (mode: ViewMode) => void;
 }
 
 export const useDashboardStore = create<DashboardState>()(
@@ -69,10 +73,12 @@ export const useDashboardStore = create<DashboardState>()(
       goals: [],
       cardSummary: [],
       snapshots: [],
+      viewMode: "family",
 
       setGoals: (goals) => set({ goals }),
       setCardSummary: (cardSummary) => set({ cardSummary }),
       setSnapshots: (snapshots) => set({ snapshots }),
+      setViewMode: (viewMode) => set({ viewMode }),
 
       toggleWidget: (id) =>
         set((s) => ({

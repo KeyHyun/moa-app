@@ -28,9 +28,9 @@ interface SpendingState {
   selectedMonth: { year: number; month: number };
   dateRange: { from: string; to: string };
   isLoading: boolean;
-  fetchTransactions: () => Promise<void>;
-  fetchTransactionsByMonth: (year: number, month: number) => Promise<void>;
-  fetchTransactionsByRange: (from: string, to: string) => Promise<void>;
+  fetchTransactions: (viewMode?: "private" | "family") => Promise<void>;
+  fetchTransactionsByMonth: (year: number, month: number, viewMode?: "private" | "family") => Promise<void>;
+  fetchTransactionsByRange: (from: string, to: string, viewMode?: "private" | "family") => Promise<void>;
   setTransactions: (transactions: Transaction[]) => void;
   addTransaction: (data: Omit<Transaction, "id" | "user_name" | "user_id">) => Promise<void>;
   updateTransaction: (id: number, data: Omit<Transaction, "id" | "user_name" | "user_id">) => Promise<void>;
@@ -62,30 +62,30 @@ export const useSpendingStore = create<SpendingState>()((set, get) => {
 
     setTransactions: (transactions) => set({ transactions }),
 
-    fetchTransactions: async () => {
+    fetchTransactions: async (viewMode = "family") => {
       set({ isLoading: true });
       try {
-        const res = await fetch("/api/transactions?limit=500");
+        const res = await fetch(`/api/transactions?limit=500&view=${viewMode}`);
         if (res.ok) set({ transactions: await res.json() });
       } finally {
         set({ isLoading: false });
       }
     },
 
-    fetchTransactionsByMonth: async (year, month) => {
+    fetchTransactionsByMonth: async (year, month, viewMode = "family") => {
       set({ isLoading: true });
       try {
-        const res = await fetch(`/api/transactions?year=${year}&month=${month}`);
+        const res = await fetch(`/api/transactions?year=${year}&month=${month}&view=${viewMode}`);
         if (res.ok) set({ transactions: await res.json() });
       } finally {
         set({ isLoading: false });
       }
     },
 
-    fetchTransactionsByRange: async (from, to) => {
+    fetchTransactionsByRange: async (from, to, viewMode = "family") => {
       set({ isLoading: true });
       try {
-        const res = await fetch(`/api/transactions?from=${from}&to=${to}`);
+        const res = await fetch(`/api/transactions?from=${from}&to=${to}&view=${viewMode}`);
         if (res.ok) set({ transactions: await res.json() });
       } finally {
         set({ isLoading: false });

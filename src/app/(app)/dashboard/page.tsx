@@ -100,10 +100,9 @@ function CustomizeDrawer({ onClose }: { onClose: () => void }) {
 export default function DashboardPage() {
   const setAssets = useAssetStore((s) => s.setAssets);
   const setTransactions = useSpendingStore((s) => s.setTransactions);
-  const { setGoals, setCardSummary, setSnapshots, widgets } = useDashboardStore();
+  const { setGoals, setCardSummary, setSnapshots, widgets, viewMode } = useDashboardStore();
   const { user, logout } = useAuthStore();
   const [showCustomize, setShowCustomize] = useState(false);
-  const [viewMode, setViewMode] = useState<"private" | "family">("family");
 
   useEffect(() => {
     fetch(`/api/dashboard?view=${viewMode}`)
@@ -122,35 +121,14 @@ export default function DashboardPage() {
   return (
     <div className="bg-toss-surface">
       {/* Top bar */}
-      <header className="flex items-center justify-between px-5 pt-12 pb-2">
+      <header className="flex items-center justify-between px-5 pt-12 pb-3">
         <p className="text-xl font-bold text-toss-text">{user?.name ?? ""}님 👋</p>
         <div className="flex items-center gap-2">
-          {/* 내 정보 / 가족 정보 토글 */}
-          <div className="flex bg-toss-surface rounded-lg overflow-hidden border border-toss-border">
-            <button
-              onClick={() => setViewMode("private")}
-              className={`px-3 py-1.5 text-lg transition-colors ${
-                viewMode === "private" ? "bg-toss-blue" : "bg-toss-surface"
-              }`}
-              title="내 정보"
-            >
-              🧑
-            </button>
-            <button
-              onClick={() => setViewMode("family")}
-              className={`px-3 py-1.5 text-lg transition-colors ${
-                viewMode === "family" ? "bg-toss-blue" : "bg-toss-surface"
-              }`}
-              title="가족 정보"
-            >
-              👨‍👩‍👧‍👦
-            </button>
-          </div>
           <button
             onClick={() => setShowCustomize(true)}
             className="text-xs text-toss-text-ter px-3 py-1.5 rounded-pill bg-white border border-toss-border"
           >
-            ⚙ 편집
+            편집
           </button>
           <button
             onClick={logout}

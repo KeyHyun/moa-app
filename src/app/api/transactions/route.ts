@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   const family = await getFamilyByUser(userId);
   const p = req.nextUrl.searchParams;
   const limit = parseInt(p.get("limit") || "500");
+  const view = (p.get("view") as "private" | "family") || "family";
 
   let fromDate: string | undefined;
   let toDate: string | undefined;
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
     toDate = `${year}-${month}-${lastDay}`;
   }
 
-  const items = await getTransactions(userId, family?.id, limit, "all", fromDate, toDate);
+  const items = await getTransactions(userId, family?.id, limit, view, fromDate, toDate);
   return NextResponse.json(items);
 }
 

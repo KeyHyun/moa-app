@@ -1,23 +1,20 @@
 "use client";
 
-import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { formatKRW } from "@/lib/formatters";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useAuthStore } from "@/store/authStore";
 import { useLockStore, maskedAmount } from "@/store/lockStore";
 
-type ViewTarget = "mine" | "family";
-
 export function CardSpendingWidget() {
   const now = new Date();
   const summary = useDashboardStore((s) => s.cardSummary);
+  const viewMode = useDashboardStore((s) => s.viewMode);
   const user = useAuthStore((s) => s.user);
   const { isAmountVisible } = useLockStore();
-  const [viewTarget, setViewTarget] = useState<ViewTarget>("family");
 
   // 내 것만 / 가족 전체 필터
-  const filtered = viewTarget === "mine"
+  const filtered = viewMode === "private"
     ? summary.filter((r) => r.user_id === user?.id)
     : summary;
 
@@ -37,22 +34,6 @@ export function CardSpendingWidget() {
           <h3 className="text-sm font-semibold text-toss-text-sub flex-shrink-0">
             💳 {now.getMonth() + 1}월 카드별 지출
           </h3>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {/* 전환 토글 */}
-            <div className="flex bg-toss-surface rounded-lg overflow-hidden">
-              {(["mine", "family"] as ViewTarget[]).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setViewTarget(t)}
-                  className={`px-2 py-1 text-xs font-semibold transition-colors ${
-                    viewTarget === t ? "bg-toss-blue text-white" : "text-toss-text-sub"
-                  }`}
-                >
-                  {t === "mine" ? "내것" : "가족"}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
         {grandTotal > 0 && (
           <p className="text-sm font-bold text-toss-red mt-2">
@@ -64,7 +45,7 @@ export function CardSpendingWidget() {
       {groups.length === 0 ? (
         <div className="px-5 pb-5 text-center py-4">
           <p className="text-xs text-toss-text-ter">
-            {viewTarget === "mine" ? "내 카드 지출이 없어요" : "지출 입력 시 카드를 선택하면 여기에 표시돼요"}
+            {viewMode === "private" ? "내 카드 지출이 없어요" : "지출 입력 시 카드를 선택하면 여기에 표시돼요"}
           </p>
         </div>
       ) : (
@@ -80,7 +61,7 @@ export function CardSpendingWidget() {
                   {formatKRW(group.total)}
                 </p>
               </div>
-              {viewTarget === "family" && group.members.length > 1 && (
+              {viewMode === "family" && group.members.length > 1 && (
                 <div className="mt-1.5 space-y-1 pl-7">
                   {group.members.map((m) => (
                     <div key={m.user_name} className="flex justify-between">
@@ -92,7 +73,7 @@ export function CardSpendingWidget() {
                   ))}
                 </div>
               )}
-              {viewTarget === "family" && group.members.length === 1 && (
+              {viewMode === "family" && group.members.length === 1 && (
                 <p className="text-xs text-toss-text-ter mt-0.5 pl-7 truncate">{group.members[0].user_name}</p>
               )}
             </div>

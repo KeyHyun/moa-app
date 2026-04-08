@@ -18,7 +18,7 @@ export interface AssetItem {
 interface AssetState {
   assets: AssetItem[];
   isLoading: boolean;
-  fetchAssets: () => Promise<void>;
+  fetchAssets: (viewMode?: "private" | "family") => Promise<void>;
   setAssets: (assets: AssetItem[]) => void;
   get totalAsset(): number;
 }
@@ -29,10 +29,10 @@ export const useAssetStore = create<AssetState>()((set, get) => ({
 
   setAssets: (assets) => set({ assets }),
 
-  fetchAssets: async () => {
+  fetchAssets: async (viewMode = "family") => {
     set({ isLoading: true });
     try {
-      const res = await fetch("/api/assets");
+      const res = await fetch(`/api/assets?view=${viewMode}`);
       if (res.ok) {
         const data = await res.json();
         set({ assets: data });

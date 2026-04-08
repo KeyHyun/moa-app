@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useSpendingStore, ViewMode } from "@/store/spendingStore";
+import { useDashboardStore } from "@/store/dashboardStore";
 import { useAuthStore } from "@/store/authStore";
 import { TopBar } from "@/components/layout/TopBar";
 import { CategoryFilterBar } from "@/components/spending/CategoryFilterBar";
@@ -36,15 +37,26 @@ export default function SpendingPage() {
   } = useSpendingStore();
 
   const user = useAuthStore((s) => s.user);
-  const [viewTarget, setViewTarget] = useState<"mine" | "family">("family");
+  const viewMode2 = useDashboardStore((s) => s.viewMode);
   const [sortOrder, setSortOrder] = useState<SortOrder>("time");
   const [rangeFrom, setRangeFrom] = useState(dateRange.from);
   const [rangeTo, setRangeTo] = useState(dateRange.to);
 
   // 초기 로드 - 월별이 기본
   useEffect(() => {
-    fetchTransactionsByMonth(selectedMonth.year, selectedMonth.month);
+    fetchTransactionsByMonth(selectedMonth.year, selectedMonth.month, viewMode2);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // viewMode 변경 시 데이터 다시 가져오기
+  useEffect(() => {
+    if (viewMode === "month") {
+      fetchTransactionsByMonth(selectedMonth.year, selectedMonth.month, viewMode2);
+    } else if (viewMode === "day") {
+      fetchTransactions(viewMode2);
+    } else if (viewMode === "range") {
+      fetchTransactionsByRange(dateRange.from, dateRange.to, viewMode2);
+    }
+  }, [viewMode2]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 뷰모드 + 내/가족 필터링
   const visibleItems = useMemo(() => {
@@ -53,13 +65,13 @@ export default function SpendingPage() {
       if (selectedType !== "all" && t.type !== selectedType) return false;
       if (selectedCategory && t.category !== selectedCategory) return false;
       // 내 거래만 / 가족 전체
-      if (viewTarget === "mine" && t.user_id !== user?.id) return false;
+      if (viewMode2 === "private" && t.user_id !== user?.id) return false;
       return true;
     });
     if (sortOrder === "amount_desc") items = [...items].sort((a, b) => b.amount - a.amount);
     else if (sortOrder === "amount_asc") items = [...items].sort((a, b) => a.amount - b.amount);
     return items;
-  }, [transactions, viewMode, selectedDate, selectedType, selectedCategory, sortOrder, viewTarget, user?.id]);
+  }, [transactions, viewMode, selectedDate, selectedType, selectedCategory, sortOrder, viewMode2, user?.id]);
 
   const totalIncome = visibleItems.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalExpense = visibleItems.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
@@ -127,20 +139,6 @@ export default function SpendingPage() {
                 </button>
               );
             })}
-          </div>
-          {/* 내/가족 전환 */}
-          <div className="flex bg-toss-surface rounded-lg overflow-hidden mx-2 flex-shrink-0">
-            {(["mine", "family"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setViewTarget(t)}
-                className={`px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                  viewTarget === t ? "bg-toss-blue text-white" : "text-toss-text-sub"
-                }`}
-              >
-                {t === "mine" ? "내것" : "가족"}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -270,16 +268,6 @@ export default function SpendingPage() {
           ))}
         </div>
       </div>
-
-      {/* FAB */}
-      <Link
-        href="/spending/add"
-        className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-toss-blue flex items-center justify-center shadow-lg active:scale-95 transition-transform"
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-          <path d="M12 5V19M5 12H19" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
-        </svg>
-      </Link>
 
       {/* 거래 목록 */}
       <div className="mt-2 bg-white divide-y divide-toss-border pb-24">
