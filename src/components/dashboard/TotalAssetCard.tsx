@@ -10,7 +10,7 @@ import { formatKRW } from "@/lib/formatters";
 export function TotalAssetCard() {
   const { assets, isLoading } = useAssetStore();
   const user = useAuthStore((s) => s.user);
-  const { isAmountVisible, openUnlockModal, lock } = useLockStore();
+  const { isAmountVisible, openUnlockModal } = useLockStore();
 
   const liabilityTypes = new Set(["loan", "mortgage", "creditLoan"]);
   const totalAssets = assets
@@ -23,16 +23,7 @@ export function TotalAssetCard() {
 
   return (
     <Card padding="lg">
-      <div className="flex items-start justify-between mb-1">
-        <p className="text-sm text-toss-text-sub">{user?.name}님의 순자산</p>
-        <button
-          onClick={isAmountVisible ? lock : openUnlockModal}
-          className="text-lg"
-          title={isAmountVisible ? "금액 숨기기" : "금액 보기"}
-        >
-          {isAmountVisible ? "🔓" : "🔒"}
-        </button>
-      </div>
+      <p className="text-sm text-toss-text-sub mb-1">{user?.name}님의 순자산</p>
 
       {isLoading ? (
         <>
