@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/Card";
 import { formatKRW } from "@/lib/formatters";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useAuthStore } from "@/store/authStore";
-import { useLockStore, maskedAmount } from "@/store/lockStore";
 
 type ViewTarget = "mine" | "family";
 
@@ -13,7 +12,6 @@ export function CardSpendingWidget() {
   const now = new Date();
   const summary = useDashboardStore((s) => s.cardSummary);
   const user = useAuthStore((s) => s.user);
-  const { isAmountVisible } = useLockStore();
   const [viewTarget, setViewTarget] = useState<ViewTarget>("family");
 
   // 내 것만 / 가족 전체 필터
@@ -77,7 +75,7 @@ export function CardSpendingWidget() {
                   <p className="text-sm font-semibold text-toss-text truncate">{group.card_name}</p>
                 </div>
                 <p className="text-sm font-bold text-toss-red flex-shrink-0 ml-2">
-                  {maskedAmount(formatKRW(group.total), isAmountVisible)}
+                  {formatKRW(group.total)}
                 </p>
               </div>
               {viewTarget === "family" && group.members.length > 1 && (
@@ -86,7 +84,7 @@ export function CardSpendingWidget() {
                     <div key={m.user_name} className="flex justify-between">
                       <p className="text-xs text-toss-text-ter truncate">{m.user_name}</p>
                       <p className="text-xs text-toss-text-sub flex-shrink-0 ml-2">
-                        {maskedAmount(formatKRW(m.total), isAmountVisible)}
+                        {formatKRW(m.total)}
                       </p>
                     </div>
                   ))}

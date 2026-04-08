@@ -103,9 +103,10 @@ export default function DashboardPage() {
   const { setGoals, setCardSummary, setSnapshots, widgets } = useDashboardStore();
   const { user, logout } = useAuthStore();
   const [showCustomize, setShowCustomize] = useState(false);
+  const [viewMode, setViewMode] = useState<"private" | "family">("family");
 
   useEffect(() => {
-    fetch("/api/dashboard")
+    fetch(`/api/dashboard?view=${viewMode}`)
       .then((r) => r.json())
       .then((d) => {
         if (d.assets) setAssets(d.assets);
@@ -114,7 +115,7 @@ export default function DashboardPage() {
         if (d.cardSummary) setCardSummary(d.cardSummary);
         if (d.snapshots) setSnapshots(d.snapshots);
       });
-  }, [setAssets, setTransactions, setGoals, setCardSummary, setSnapshots]);
+  }, [setAssets, setTransactions, setGoals, setCardSummary, setSnapshots, viewMode]);
 
   const enabledWidgets = widgets.filter((w) => w.enabled);
 
@@ -127,6 +128,25 @@ export default function DashboardPage() {
           <h1 className="text-xl font-bold text-toss-text">{user?.name ?? ""}님 👋</h1>
         </div>
         <div className="flex items-center gap-2">
+          {/* 내 정보 / 가족 정보 토글 */}
+          <div className="flex bg-toss-surface rounded-lg overflow-hidden border border-toss-border">
+            <button
+              onClick={() => setViewMode("private")}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === "private" ? "bg-toss-blue text-white" : "text-toss-text-sub"
+              }`}
+            >
+              내 정보
+            </button>
+            <button
+              onClick={() => setViewMode("family")}
+              className={`px-3 py-1.5 text-xs font-semibold transition-colors ${
+                viewMode === "family" ? "bg-toss-blue text-white" : "text-toss-text-sub"
+              }`}
+            >
+              가족 정보
+            </button>
+          </div>
           <button
             onClick={() => setShowCustomize(true)}
             className="text-xs text-toss-text-ter px-3 py-1.5 rounded-pill bg-white border border-toss-border"
