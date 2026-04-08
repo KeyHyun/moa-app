@@ -13,7 +13,6 @@ export function CardSpendingWidget() {
   const now = new Date();
   const summary = useDashboardStore((s) => s.cardSummary);
   const user = useAuthStore((s) => s.user);
-  const { isAmountVisible } = useLockStore();
   const [viewTarget, setViewTarget] = useState<ViewTarget>("family");
 
   // 내 것만 / 가족 전체 필터
