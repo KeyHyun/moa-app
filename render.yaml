@@ -2,7 +2,7 @@ services:
   - type: web
     name: moa-app
     runtime: node
-    region: singapore
+    region: frankfurt
     plan: free           # 무료 플랜 (슬립 있음, Disk 없음 → Turso로 데이터 유지)
     buildCommand: npm ci && npm run build
     startCommand: npm start
