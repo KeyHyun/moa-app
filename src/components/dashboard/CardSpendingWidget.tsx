@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { formatKRW } from "@/lib/formatters";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useAuthStore } from "@/store/authStore";
+import { useLockStore, maskedAmount } from "@/store/lockStore";
 
 type ViewTarget = "mine" | "family";
 
@@ -12,6 +13,7 @@ export function CardSpendingWidget() {
   const now = new Date();
   const summary = useDashboardStore((s) => s.cardSummary);
   const user = useAuthStore((s) => s.user);
+  const { isAmountVisible } = useLockStore();
   const [viewTarget, setViewTarget] = useState<ViewTarget>("family");
 
   // 내 것만 / 가족 전체 필터

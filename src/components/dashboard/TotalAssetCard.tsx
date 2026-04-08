@@ -39,12 +39,20 @@ export function TotalAssetCard() {
           <Skeleton className="h-10 w-48 mb-2" />
           <Skeleton className="h-5 w-32 mb-4" />
         </>
+      ) : !isAmountVisible ? (
+        <button
+          onClick={openUnlockModal}
+          className="w-full py-4 flex flex-col items-center justify-center gap-1 text-toss-text-ter hover:bg-toss-surface rounded-xl transition-colors"
+        >
+          <span className="text-2xl">🔒</span>
+          <span className="text-sm font-medium">잠금 해제 후 확인</span>
+        </button>
       ) : (
         <>
           {/* 총 자산 (부채 미차감) */}
           <div className="mb-2">
             <p className="text-xs text-toss-text-ter mb-0.5">총 자산</p>
-            <h2 className={`text-3xl font-bold text-toss-text tracking-tight ${!isAmountVisible ? "blur-md" : ""}`}>
+            <h2 className="text-3xl font-bold text-toss-text tracking-tight">
               {formatKRW(totalAssets)}
             </h2>
           </div>
@@ -53,7 +61,7 @@ export function TotalAssetCard() {
           {totalLiabilities > 0 && (
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-toss-text-ter">부채</span>
-              <span className={`text-sm font-semibold text-toss-red ${!isAmountVisible ? "blur-md" : ""}`}>
+              <span className="text-sm font-semibold text-toss-red">
                 -{formatKRW(totalLiabilities)}
               </span>
             </div>
@@ -63,7 +71,7 @@ export function TotalAssetCard() {
           <div className="pt-2 border-t border-toss-border">
             <div className="flex items-center justify-between">
               <span className="text-xs text-toss-text-ter">순자산</span>
-              <span className={`text-sm font-bold ${netWorth >= 0 ? "text-toss-blue" : "text-toss-red"} ${!isAmountVisible ? "blur-md" : ""}`}>
+              <span className={`text-sm font-bold ${netWorth >= 0 ? "text-toss-blue" : "text-toss-red"}`}>
                 {formatKRW(netWorth)}
               </span>
             </div>
