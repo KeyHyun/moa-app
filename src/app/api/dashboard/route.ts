@@ -31,13 +31,18 @@ export async function GET(req: NextRequest) {
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
 
+  // viewMode 파싱 (private | family)
+  const url = new URL(req.url);
+  const viewParam = url.searchParams.get("view");
+  const viewMode: "family" | "private" = viewParam === "private" ? "private" : "family";
+
   // 모든 데이터를 병렬로 조회
   const [assets, transactions, goals, cardSummary, snapshots] = await Promise.all([
-    getAssets(family?.id, parsed.userId),
-    getTransactions(parsed.userId, family?.id, 200),
-    family ? getGoals(family.id) : Promise.resolve([]),
-    family ? getCardSpendingSummary(family.id, year, month) : Promise.resolve([]),
-    family ? getAssetSnapshots(family.id, 30) : Promise.resolve([]),
+    getAssets(family?.id, parsed.userId, viewMode),
+    getTransactions(parsed.userId, family?.id, 200, viewMode),
+    family && viewMode === "family" ? getGoals(family.id) : Promise.resolve([]),
+    family && viewMode === "family" ? getCardSpendingSummary(family.id, year, month) : Promise.resolve([]),
+    family && viewMode === "family" ? getAssetSnapshots(family.id, 30) : Promise.resolve([]),
   ]);
 
   return NextResponse.json({ assets, transactions, goals, cardSummary, snapshots });
