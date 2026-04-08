@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "모아 - 가족 자산 관리",
   description: "가족이 함께 모으고, 함께 관리하는 자산 서비스",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
