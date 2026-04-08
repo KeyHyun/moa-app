@@ -61,5 +61,5 @@ export const useLockStore = create<LockState>()((set, get) => ({
 
 /** 금액 표시 헬퍼 */
 export function maskedAmount(formatted: string, visible: boolean): string {
-  return visible ? formatted : "₩ ••••••";
+  return visible ? formatted : "••••••";
 }

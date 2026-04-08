@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { formatKRW } from "@/lib/formatters";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useAuthStore } from "@/store/authStore";
-import { useLockStore, maskedAmount } from "@/store/lockStore";
+import { useLockStore } from "@/store/lockStore";
 
 type ViewTarget = "mine" | "family";
 
@@ -39,7 +39,7 @@ export function CardSpendingWidget() {
         <div className="flex items-center gap-2">
           {grandTotal > 0 && (
             <p className="text-sm font-bold text-toss-red">
-              {maskedAmount(formatKRW(grandTotal), isAmountVisible)}
+              {formatKRW(grandTotal)}
             </p>
           )}
           {/* 전환 토글 */}
@@ -75,7 +75,7 @@ export function CardSpendingWidget() {
                   <p className="text-sm font-semibold text-toss-text truncate">{group.card_name}</p>
                 </div>
                 <p className="text-sm font-bold text-toss-red flex-shrink-0 ml-2">
-                  {maskedAmount(formatKRW(group.total), isAmountVisible)}
+                  {formatKRW(group.total)}
                 </p>
               </div>
               {viewTarget === "family" && group.members.length > 1 && (
@@ -84,7 +84,7 @@ export function CardSpendingWidget() {
                     <div key={m.user_name} className="flex justify-between">
                       <p className="text-xs text-toss-text-ter truncate">{m.user_name}</p>
                       <p className="text-xs text-toss-text-sub flex-shrink-0 ml-2">
-                        {maskedAmount(formatKRW(m.total), isAmountVisible)}
+                        {formatKRW(m.total)}
                       </p>
                     </div>
                   ))}

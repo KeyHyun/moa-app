@@ -44,7 +44,7 @@ export function TotalAssetCard() {
           {/* 총 자산 (부채 미차감) */}
           <div className="mb-2">
             <p className="text-xs text-toss-text-ter mb-0.5">총 자산</p>
-            <h2 className="text-3xl font-bold text-toss-text tracking-tight">
+            <h2 className={`text-3xl font-bold text-toss-text tracking-tight ${!isAmountVisible ? "blur-md" : ""}`}>
               {maskedAmount(formatKRW(totalAssets), isAmountVisible)}
             </h2>
           </div>
@@ -53,7 +53,7 @@ export function TotalAssetCard() {
           {totalLiabilities > 0 && (
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-toss-text-ter">부채</span>
-              <span className="text-sm font-semibold text-toss-red">
+              <span className={`text-sm font-semibold text-toss-red ${!isAmountVisible ? "blur-md" : ""}`}>
                 {maskedAmount(`-${formatKRW(totalLiabilities)}`, isAmountVisible)}
               </span>
             </div>
@@ -63,7 +63,7 @@ export function TotalAssetCard() {
           <div className="pt-2 border-t border-toss-border">
             <div className="flex items-center justify-between">
               <span className="text-xs text-toss-text-ter">순자산</span>
-              <span className={`text-sm font-bold ${netWorth >= 0 ? "text-toss-blue" : "text-toss-red"}`}>
+              <span className={`text-sm font-bold ${netWorth >= 0 ? "text-toss-blue" : "text-toss-red"} ${!isAmountVisible ? "blur-md" : ""}`}>
                 {maskedAmount(formatKRW(netWorth), isAmountVisible)}
               </span>
             </div>
