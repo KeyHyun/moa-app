@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/Card";
 import { formatKRW } from "@/lib/formatters";
 import { useDashboardStore } from "@/store/dashboardStore";
 import { useAuthStore } from "@/store/authStore";
-import { useLockStore } from "@/store/lockStore";
 
 type ViewTarget = "mine" | "family";
 
