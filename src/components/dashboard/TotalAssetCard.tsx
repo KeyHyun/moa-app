@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAssetStore } from "@/store/assetStore";
 import { useAuthStore } from "@/store/authStore";
-import { useLockStore, maskedAmount } from "@/store/lockStore";
+import { useLockStore } from "@/store/lockStore";
 import { formatKRW } from "@/lib/formatters";
 
 export function TotalAssetCard() {
@@ -45,7 +45,7 @@ export function TotalAssetCard() {
           <div className="mb-2">
             <p className="text-xs text-toss-text-ter mb-0.5">총 자산</p>
             <h2 className={`text-3xl font-bold text-toss-text tracking-tight ${!isAmountVisible ? "blur-md" : ""}`}>
-              {maskedAmount(formatKRW(totalAssets), isAmountVisible)}
+              {formatKRW(totalAssets)}
             </h2>
           </div>
 
@@ -54,7 +54,7 @@ export function TotalAssetCard() {
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs text-toss-text-ter">부채</span>
               <span className={`text-sm font-semibold text-toss-red ${!isAmountVisible ? "blur-md" : ""}`}>
-                {maskedAmount(`-${formatKRW(totalLiabilities)}`, isAmountVisible)}
+                -{formatKRW(totalLiabilities)}
               </span>
             </div>
           )}
@@ -64,7 +64,7 @@ export function TotalAssetCard() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-toss-text-ter">순자산</span>
               <span className={`text-sm font-bold ${netWorth >= 0 ? "text-toss-blue" : "text-toss-red"} ${!isAmountVisible ? "blur-md" : ""}`}>
-                {maskedAmount(formatKRW(netWorth), isAmountVisible)}
+                {formatKRW(netWorth)}
               </span>
             </div>
           </div>
