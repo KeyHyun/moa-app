@@ -7,10 +7,19 @@ import { useAuthStore } from "@/store/authStore";
 import { useLockStore } from "@/store/lockStore";
 import { formatKRW } from "@/lib/formatters";
 
+function formatRemaining(seconds: number): string {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  if (min > 0) {
+    return `${min}분 ${sec}초`;
+  }
+  return `${sec}초`;
+}
+
 export function TotalAssetCard() {
   const { assets, isLoading } = useAssetStore();
   const user = useAuthStore((s) => s.user);
-  const { isAmountVisible, openUnlockModal } = useLockStore();
+  const { isAmountVisible, openUnlockModal, remainingSeconds } = useLockStore();
 
   const liabilityTypes = new Set(["loan", "mortgage", "creditLoan"]);
   const totalAssets = assets
@@ -23,7 +32,12 @@ export function TotalAssetCard() {
 
   return (
     <Card padding="lg">
-      <p className="text-sm text-toss-text-sub mb-1">{user?.name}님의 순자산</p>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm text-toss-text-sub">{user?.name}님의 순자산</p>
+        {isAmountVisible && remainingSeconds > 0 && (
+          <span className="text-xs text-toss-text-ter">{formatRemaining(remainingSeconds)}</span>
+        )}
+      </div>
 
       {isLoading ? (
         <>

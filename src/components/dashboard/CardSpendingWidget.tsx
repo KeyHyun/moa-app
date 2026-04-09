@@ -21,7 +21,13 @@ export function CardSpendingWidget() {
   const grouped = filtered.reduce<Record<string, { card_name: string; total: number; members: { user_name: string; total: number }[] }>>((acc, row) => {
     if (!acc[row.card_name]) acc[row.card_name] = { card_name: row.card_name, total: 0, members: [] };
     acc[row.card_name].total += row.total;
-    acc[row.card_name].members.push({ user_name: row.user_name, total: row.total });
+    // 같은 사용자가 있으면 금액 합치기
+    const existingMember = acc[row.card_name].members.find(m => m.user_name === row.user_name);
+    if (existingMember) {
+      existingMember.total += row.total;
+    } else {
+      acc[row.card_name].members.push({ user_name: row.user_name, total: row.total });
+    }
     return acc;
   }, {});
   const groups = Object.values(grouped).sort((a, b) => b.total - a.total);
@@ -61,21 +67,6 @@ export function CardSpendingWidget() {
                   {formatKRW(group.total)}
                 </p>
               </div>
-              {viewMode === "family" && group.members.length > 1 && (
-                <div className="mt-1.5 space-y-1 pl-7">
-                  {group.members.map((m) => (
-                    <div key={m.user_name} className="flex justify-between">
-                      <p className="text-xs text-toss-text-ter truncate">{m.user_name}</p>
-                      <p className="text-xs text-toss-text-sub flex-shrink-0 ml-2">
-                        {formatKRW(m.total)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {viewMode === "family" && group.members.length === 1 && (
-                <p className="text-xs text-toss-text-ter mt-0.5 pl-7 truncate">{group.members[0].user_name}</p>
-              )}
             </div>
           ))}
         </div>

@@ -3,6 +3,11 @@
 import { useEffect, useState } from "react";
 import { useLockStore } from "@/store/lockStore";
 import { useAuthStore } from "@/store/authStore";
+import {
+  startAuthentication,
+  browserSupportsWebAuthn,
+  browserSupportsWebAuthnAutofill,
+} from "@simplewebauthn/browser";
 
 /** 앱 레이아웃에 한 번만 마운트 — 타이머 tick + 모달 렌더 담당 */
 export function AmountLockProvider() {
@@ -11,6 +16,7 @@ export function AmountLockProvider() {
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [faceIdLoading, setFaceIdLoading] = useState(false);
 
   // 매초 tick
   useEffect(() => {
@@ -32,6 +38,56 @@ export function AmountLockProvider() {
     }
   };
 
+  const handleFaceIdUnlock = async () => {
+    if (!user?.email) return;
+    setFaceIdLoading(true);
+    setError("");
+    try {
+      // 인증 시작
+      const beginRes = await fetch("/api/auth/webauthn/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "begin", email: user.email }),
+      });
+      if (!beginRes.ok) {
+        const data = await beginRes.json();
+        throw new Error(data.error || "Face ID 인증을 시작할 수 없습니다.");
+      }
+      const options = await beginRes.json();
+
+      // 브라우저 인증
+      const response = await startAuthentication(options);
+
+      // 인증 완료
+      const completeRes = await fetch("/api/auth/webauthn/authenticate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "complete", email: user.email, response }),
+      });
+      if (!completeRes.ok) {
+        const data = await completeRes.json();
+        throw new Error(data.error || "Face ID 인증에 실패했습니다.");
+      }
+
+      // 인증 성공 시 잠금 해제
+      const { useLockStore } = await import("@/store/lockStore");
+      const LOCK_DURATION_MS = 300_000;
+      useLockStore.setState({
+        isAmountVisible: true,
+        expiresAt: Date.now() + LOCK_DURATION_MS,
+        showExtendPrompt: false,
+        showUnlockModal: false,
+        remainingSeconds: LOCK_DURATION_MS / 1000,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Face ID 인증에 실패했습니다.");
+    } finally {
+      setFaceIdLoading(false);
+    }
+  };
+
+  const canUseFaceId = browserSupportsWebAuthn() && browserSupportsWebAuthnAutofill();
+
   return (
     <>
       {/* 잠금 연장 팝업 */}
@@ -42,7 +98,7 @@ export function AmountLockProvider() {
             onClick={extend}
             className="px-3 py-1.5 bg-white text-toss-text text-xs font-bold rounded-xl"
           >
-            1분 연장
+            5분 연장
           </button>
           <button onClick={lock} className="text-xs text-white/60">
             잠금
@@ -56,7 +112,7 @@ export function AmountLockProvider() {
           <div className="bg-white w-full max-w-md rounded-t-2xl px-6 pt-6 pb-10">
             <div className="w-10 h-1 bg-toss-border rounded-full mx-auto mb-5" />
             <h2 className="text-base font-bold text-toss-text mb-1">금액 확인</h2>
-            <p className="text-sm text-toss-text-ter mb-5">비밀번호를 입력하면 1분 동안 금액을 볼 수 있어요</p>
+            <p className="text-sm text-toss-text-ter mb-5">비밀번호를 입력하면 5분 동안 금액을 볼 수 있어요</p>
             <input
               type="password"
               value={pw}
@@ -82,6 +138,20 @@ export function AmountLockProvider() {
                 {loading ? "확인 중..." : "확인"}
               </button>
             </div>
+            {canUseFaceId && (
+              <button
+                onClick={handleFaceIdUnlock}
+                disabled={faceIdLoading}
+                className="w-full mt-3 py-3 bg-toss-surface text-toss-text-sub text-sm font-semibold rounded-xl flex items-center justify-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" x2="12" y1="19" y2="22" />
+                </svg>
+                {faceIdLoading ? "인증 중..." : "Face ID로 인증"}
+              </button>
+            )}
           </div>
         </div>
       )}

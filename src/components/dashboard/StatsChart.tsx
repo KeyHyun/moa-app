@@ -7,12 +7,10 @@ import {
 } from "recharts";
 import { useSpendingStore, Transaction } from "@/store/spendingStore";
 import { useAssetStore } from "@/store/assetStore";
-import { useAuthStore } from "@/store/authStore";
 import { formatKRW } from "@/lib/formatters";
 import { ASSET_TYPE_CONFIG } from "@/lib/constants";
 
 type Period = "일" | "월" | "년";
-type ViewMode = "전체" | "내꺼만" | "공유만";
 
 const ASSET_COLORS = ["#3182F6", "#2DB400", "#FF8C00", "#EC4899", "#8B5CF6"];
 
@@ -92,22 +90,8 @@ function CustomTooltip({ active, payload, label }: {
 /* ── 메인 컴포넌트 ── */
 export function StatsChart() {
   const [period, setPeriod] = useState<Period>("월");
-  const [viewMode, setViewMode] = useState<ViewMode>("전체");
-  const allTransactions = useSpendingStore((s) => s.transactions);
+  const transactions = useSpendingStore((s) => s.transactions);
   const assets = useAssetStore((s) => s.assets);
-  const currentUser = useAuthStore((s) => s.user);
-
-  const transactions = useMemo(() => {
-    if (viewMode === "내꺼만")
-      // 내가 올린 것 중 나만 보는 거래 (family-visible은 "공유만"에서 집계)
-      return allTransactions.filter(
-        (t) => t.user_id === currentUser?.id && t.visibility === "private"
-      );
-    if (viewMode === "공유만")
-      // 가족 공개 거래 전체 (올린 사람 무관)
-      return allTransactions.filter((t) => t.visibility === "family");
-    return allTransactions;
-  }, [allTransactions, viewMode, currentUser]);
 
   const barData = useMemo(() => groupTransactions(transactions, period), [transactions, period]);
 
@@ -137,21 +121,6 @@ export function StatsChart() {
             }`}
           >
             {p}별
-          </button>
-        ))}
-      </div>
-
-      {/* 보기 모드 */}
-      <div className="flex gap-1.5 px-4 pt-3">
-        {(["전체", "내꺼만", "공유만"] as ViewMode[]).map((v) => (
-          <button
-            key={v}
-            onClick={() => setViewMode(v)}
-            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-              viewMode === v ? "bg-toss-blue text-white" : "bg-toss-surface text-toss-text-sub"
-            }`}
-          >
-            {v}
           </button>
         ))}
       </div>
