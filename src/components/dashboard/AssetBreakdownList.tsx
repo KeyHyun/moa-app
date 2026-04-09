@@ -54,7 +54,6 @@ export function AssetBreakdownList() {
               </div>
             ))
           : groups.map(({ type, config, items, total }) => {
-              const isLiability = config.isLiability;
               const isExpanded = expandedTypes.has(type);
               const hasMultiple = items.length > 1;
 
@@ -66,7 +65,7 @@ export function AssetBreakdownList() {
                     onClick={() => hasMultiple && toggleType(type)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 ${isLiability ? "bg-red-50" : "bg-toss-blue-light"}`}>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl flex-shrink-0 bg-toss-blue-light">
                         {config.icon}
                       </div>
                       <div className="min-w-0">
@@ -78,8 +77,8 @@ export function AssetBreakdownList() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                      <p className={`text-sm font-semibold ${isLiability ? "text-toss-red" : "text-toss-text"}`}>
-                        {isLiability ? "-" : ""}{maskedAmount(formatKRW(Math.abs(total)), isAmountVisible)}
+                      <p className="text-sm font-semibold text-toss-text">
+                        {maskedAmount(formatKRW(Math.abs(total)), isAmountVisible)}
                       </p>
                       {hasMultiple && (
                         <span className="text-toss-text-ter text-xs">{isExpanded ? "▲" : "▼"}</span>
@@ -97,8 +96,8 @@ export function AssetBreakdownList() {
                           {asset.user_name ? ` · ${asset.user_name}` : ""}
                         </p>
                       </div>
-                      <p className={`text-xs font-semibold flex-shrink-0 ml-2 ${isLiability ? "text-toss-red" : "text-toss-text-sub"}`}>
-                        {isLiability ? "-" : ""}{maskedAmount(formatKRW(Math.abs(asset.amount)), isAmountVisible)}
+                      <p className="text-xs font-semibold flex-shrink-0 ml-2 text-toss-text-sub">
+                        {maskedAmount(formatKRW(Math.abs(asset.amount)), isAmountVisible)}
                       </p>
                     </div>
                   ))}

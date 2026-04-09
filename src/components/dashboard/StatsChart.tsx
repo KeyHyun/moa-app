@@ -95,13 +95,16 @@ export function StatsChart() {
 
   const barData = useMemo(() => groupTransactions(transactions, period), [transactions, period]);
 
-  const assetPieData = useMemo(() =>
-    assets.map((a) => ({
-      name: ASSET_TYPE_CONFIG[a.type]?.label ?? a.type,
-      value: a.amount,
-    })),
-    [assets]
-  );
+  const assetPieData = useMemo(() => {
+    const grouped = assets
+      .filter((a) => !ASSET_TYPE_CONFIG[a.type]?.isLiability)
+      .reduce<Record<string, number>>((acc, a) => {
+        const label = ASSET_TYPE_CONFIG[a.type]?.label ?? a.type;
+        acc[label] = (acc[label] || 0) + a.amount;
+        return acc;
+      }, {});
+    return Object.entries(grouped).map(([name, value]) => ({ name, value }));
+  }, [assets]);
 
   const totalIncome = barData.reduce((s, d) => s + d.income, 0);
   const totalExpense = barData.reduce((s, d) => s + d.expense, 0);
