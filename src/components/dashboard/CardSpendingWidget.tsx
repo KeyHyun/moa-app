@@ -58,7 +58,7 @@ export function CardSpendingWidget() {
                   <p className="text-sm font-semibold text-toss-text truncate">{group.card_name}</p>
                 </div>
                 <p className="text-sm font-bold text-toss-red flex-shrink-0 ml-2">
-                  {formatKRW(group.total)}
+                  {maskedAmount(formatKRW(group.total), isAmountVisible)}
                 </p>
               </div>
               {viewMode === "family" && group.members.length > 1 && (
@@ -67,7 +67,7 @@ export function CardSpendingWidget() {
                     <div key={m.user_name} className="flex justify-between">
                       <p className="text-xs text-toss-text-ter truncate">{m.user_name}</p>
                       <p className="text-xs text-toss-text-sub flex-shrink-0 ml-2">
-                        {formatKRW(m.total)}
+                        {maskedAmount(formatKRW(m.total), isAmountVisible)}
                       </p>
                     </div>
                   ))}
