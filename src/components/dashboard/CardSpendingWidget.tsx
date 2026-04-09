@@ -42,13 +42,21 @@ export function CardSpendingWidget() {
         )}
       </div>
 
-      {groups.length === 0 ? (
+      {!isAmountVisible && groups.length > 0 && (
+        <div className="px-5 pb-5 text-center py-4">
+          <p className="text-xs text-toss-text-ter">잠금 상태입니다</p>
+        </div>
+      )}
+
+      {isAmountVisible && groups.length === 0 && (
         <div className="px-5 pb-5 text-center py-4">
           <p className="text-xs text-toss-text-ter">
             {viewMode === "private" ? "내 카드 지출이 없어요" : "지출 입력 시 카드를 선택하면 여기에 표시돼요"}
           </p>
         </div>
-      ) : (
+      )}
+
+      {isAmountVisible && groups.length > 0 && (
         <div className="divide-y divide-toss-border">
           {groups.map((group) => (
             <div key={group.card_name} className="px-5 py-3">
@@ -58,7 +66,7 @@ export function CardSpendingWidget() {
                   <p className="text-sm font-semibold text-toss-text truncate">{group.card_name}</p>
                 </div>
                 <p className="text-sm font-bold text-toss-red flex-shrink-0 ml-2">
-                  {maskedAmount(formatKRW(group.total), isAmountVisible)}
+                  {formatKRW(group.total)}
                 </p>
               </div>
               {viewMode === "family" && group.members.length > 1 && (
@@ -67,7 +75,7 @@ export function CardSpendingWidget() {
                     <div key={m.user_name} className="flex justify-between">
                       <p className="text-xs text-toss-text-ter truncate">{m.user_name}</p>
                       <p className="text-xs text-toss-text-sub flex-shrink-0 ml-2">
-                        {maskedAmount(formatKRW(m.total), isAmountVisible)}
+                        {formatKRW(m.total)}
                       </p>
                     </div>
                   ))}
