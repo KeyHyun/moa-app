@@ -48,13 +48,21 @@ export function CardSpendingWidget() {
         )}
       </div>
 
-      {groups.length === 0 ? (
+      {!isAmountVisible && groups.length > 0 && (
+        <div className="px-5 pb-5 text-center py-4">
+          <p className="text-xs text-toss-text-ter">잠금 상태입니다</p>
+        </div>
+      )}
+
+      {isAmountVisible && groups.length === 0 && (
         <div className="px-5 pb-5 text-center py-4">
           <p className="text-xs text-toss-text-ter">
             {viewMode === "private" ? "내 카드 지출이 없어요" : "지출 입력 시 카드를 선택하면 여기에 표시돼요"}
           </p>
         </div>
-      ) : (
+      )}
+
+      {isAmountVisible && groups.length > 0 && (
         <div className="divide-y divide-toss-border">
           {groups.map((group) => (
             <div key={group.card_name} className="px-5 py-3">
