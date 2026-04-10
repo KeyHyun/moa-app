@@ -69,9 +69,7 @@ function FloatingMenuButton() {
             <button
               onClick={() => {
                 item.onClick();
-                if (item.id !== "private" && item.id !== "family") {
-                  setIsOpen(false);
-                }
+                setIsOpen(false);
               }}
               className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg ${
                 item.active
