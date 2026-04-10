@@ -52,34 +52,24 @@ function FloatingMenuButton() {
       {/* 펼쳐지는 메뉴들 */}
       <div className="fixed bottom-20 right-4 z-40">
         {menuItems.map((item, index) => (
-          <div
+          <button
             key={item.id}
-            className="absolute bottom-full mb-2 right-0 flex items-center gap-2 transition-all duration-200 ease-out"
+            onClick={() => {
+              item.onClick();
+              setIsOpen(false);
+            }}
+            className="absolute bottom-full mb-2 right-0 flex items-center gap-2 text-sm font-medium text-toss-text bg-white px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap transition-all duration-200 ease-out"
             style={{
               transform: isOpen
-                ? `translateY(${-(menuItems.length - 1 - index) * 56}px)`
+                ? `translateY(${-(menuItems.length - 1 - index) * 48}px)`
                 : "translateY(0)",
               opacity: isOpen ? 1 : 0,
               pointerEvents: isOpen ? "auto" : "none",
             }}
           >
-            <span className="text-sm font-medium text-toss-text bg-white px-3 py-1.5 rounded-lg shadow-md whitespace-nowrap">
-              {item.label}
-            </span>
-            <button
-              onClick={() => {
-                item.onClick();
-                setIsOpen(false);
-              }}
-              className={`w-12 h-12 flex items-center justify-center rounded-full shadow-lg ${
-                item.active
-                  ? "bg-toss-blue text-white"
-                  : "bg-white"
-              }`}
-            >
-              <span className="text-xl">{item.emoji}</span>
-            </button>
-          </div>
+            <span>{item.emoji}</span>
+            <span className={item.active ? "text-toss-blue" : ""}>{item.label}</span>
+          </button>
         ))}
 
         {/* 메인 버튼 */}
