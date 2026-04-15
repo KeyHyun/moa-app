@@ -17,21 +17,30 @@ function FloatingMenuButton() {
     {
       id: "private",
       label: "내 정보",
-      emoji: "🧑",
+      icon: <img src="/man.png" alt="내 정보" className="w-6 h-6 object-contain" />,
       onClick: () => setViewMode("private"),
       active: viewMode === "private",
     },
     {
       id: "family",
       label: "가족 정보",
-      emoji: "👨‍👩‍👧‍👦",
+      icon: <img src="/family.png" alt="가족 정보" className="w-6 h-6 object-contain" />,
       onClick: () => setViewMode("family"),
       active: viewMode === "family",
     },
     {
+      id: "travel",
+      label: "여행가계부",
+      icon: <span>✈️</span>,
+      onClick: () => {
+        setIsOpen(false);
+        router.push("/travel");
+      },
+    },
+    {
       id: "spending",
       label: "지출내역 입력",
-      emoji: "💸",
+      icon: <span>💸</span>,
       onClick: () => {
         setIsOpen(false);
         router.push("/spending/add");
@@ -58,7 +67,7 @@ function FloatingMenuButton() {
               item.onClick();
               setIsOpen(false);
             }}
-            className="absolute bottom-full mb-2 right-0 flex items-center gap-2 text-sm font-medium text-toss-text bg-white px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap transition-all duration-200 ease-out"
+            className="absolute bottom-full mb-2 right-0 flex items-center gap-2 text-sm font-medium text-toss-text bg-white px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap transition-all duration-200 ease-out min-w-max"
             style={{
               transform: isOpen
                 ? `translateY(${-(menuItems.length - 1 - index) * 48}px)`
@@ -67,7 +76,7 @@ function FloatingMenuButton() {
               pointerEvents: isOpen ? "auto" : "none",
             }}
           >
-            <span>{item.emoji}</span>
+            {item.icon}
             <span className={item.active ? "text-toss-blue" : ""}>{item.label}</span>
           </button>
         ))}
@@ -82,7 +91,13 @@ function FloatingMenuButton() {
           }`}
         >
           <span className={`text-2xl ${isOpen ? "text-white" : ""}`}>
-            {isOpen ? "+" : (viewMode === "private" ? "🧑" : "👨‍👩‍👧‍👦")}
+            {isOpen ? "+" : (
+              viewMode === "private" ? (
+                <img src="/man.png" alt="내 정보" className="w-8 h-8 object-contain" />
+              ) : (
+                <img src="/family.png" alt="가족 정보" className="w-8 h-8 object-contain" />
+              )
+            )}
           </span>
         </button>
       </div>

@@ -8,7 +8,24 @@
       "Read(//c/Users/기현/IdeaProjects/ai-messenger/**)",
       "Bash(cmd:*)",
       "Bash(npx:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(git pull:*)",
+      "Bash(mkdir -p \"C:/Users/기현/IdeaProjects/family-asset-app/src/app/api/trips/[id]/expenses/[expenseId]\")",
+      "Bash(mkdir -p \"C:/Users/기현/IdeaProjects/family-asset-app/src/app/api/trips/[id]/settlement\")",
+      "Bash(mkdir -p \"C:/Users/기현/IdeaProjects/family-asset-app/src/app/api/trips/[id]/export\")",
+      "Bash(curl -s http://localhost:3000/api/trips)",
+      "Bash(sqlite3 data/moa.db \".tables\")",
+      "Bash(python3 -c \"import sqlite3; conn=sqlite3.connect\\('data/moa.db'\\); print\\([r[0] for r in conn.execute\\(\\\\\"SELECT name FROM sqlite_master WHERE type='table'\\\\\"\\).fetchall\\(\\)]\\)\")",
+      "Bash(node check-db.cjs)",
+      "Bash(curl:*)",
+      "Bash(node init-trip-tables.cjs)",
+      "Bash(node migrate-currency.cjs)",
+      "Bash(rm migrate-currency.cjs)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist //FI \"PID eq 19048\")",
+      "Bash(tasklist /FI \"PID eq 19048\")",
+      "Bash(taskkill //F //PID 19048)",
+      "Bash(taskkill /F /PID 19048)"
     ]
   }
 }

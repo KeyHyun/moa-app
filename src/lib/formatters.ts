@@ -18,6 +18,50 @@ export function formatKRW(amount: number): string {
   return `${sign}${abs.toLocaleString()}원`;
 }
 
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+  KRW: "원",
+  USD: "달러",
+  EUR: "유로",
+  JPY: "엔",
+  CNY: "위안",
+  GBP: "파운드",
+  THB: "바트",
+  VND: "동",
+  PHP: "페소",
+  TWD: "대만달러",
+  SGD: "싱가포르달러",
+  MYR: "링깃",
+  IDR: "루피아",
+  AUD: "호주달러",
+  CAD: "캐나다달러",
+};
+
+export const CURRENCY_OPTIONS = [
+  { code: "KRW", label: "한국 원 (₩)" },
+  { code: "USD", label: "미국 달러 ($)" },
+  { code: "EUR", label: "유로 (€)" },
+  { code: "JPY", label: "일본 엔 (¥)" },
+  { code: "CNY", label: "중국 위안 (¥)" },
+  { code: "GBP", label: "영국 파운드 (£)" },
+  { code: "THB", label: "태국 바트 (฿)" },
+  { code: "VND", label: "베트남 동 (₫)" },
+  { code: "PHP", label: "필리핀 페소 (₱)" },
+  { code: "TWD", label: "대만 달러 (NT$)" },
+  { code: "SGD", label: "싱가포르 달러 (S$)" },
+  { code: "MYR", label: "말레이시아 링깃 (RM)" },
+  { code: "IDR", label: "인도네시아 루피아 (Rp)" },
+  { code: "AUD", label: "호주 달러 (A$)" },
+  { code: "CAD", label: "캐나다 달러 (C$)" },
+];
+
+export function formatCurrency(amount: number, currency: string = "KRW"): string {
+  if (currency === "KRW") return formatKRW(amount);
+  const symbol = CURRENCY_SYMBOLS[currency] || currency;
+  const abs = Math.abs(amount);
+  const sign = amount < 0 ? "-" : "";
+  return `${sign}${abs.toLocaleString()}${symbol}`;
+}
+
 export function formatKRWShort(amount: number): string {
   const abs = Math.abs(amount);
   const sign = amount < 0 ? "-" : "";

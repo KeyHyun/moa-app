@@ -152,12 +152,62 @@ async function _initSchema() {
       `CREATE INDEX IF NOT EXISTS idx_transactions_family ON transactions(family_id)`,
       `CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)`,
       `CREATE INDEX IF NOT EXISTS idx_snapshots_family_date ON asset_snapshots(family_id, date)`,
+      `CREATE TABLE IF NOT EXISTS trips (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        destination TEXT NOT NULL,
+        start_date TEXT NOT NULL,
+        end_date TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        currency TEXT NOT NULL DEFAULT 'KRW',
+        invite_code TEXT NOT NULL UNIQUE,
+        owner_id INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS trip_members (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trip_id INTEGER NOT NULL REFERENCES trips(id),
+        user_id INTEGER REFERENCES users(id),
+        guest_name TEXT NOT NULL DEFAULT '',
+        role TEXT NOT NULL DEFAULT 'member',
+        joined_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS trip_expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trip_id INTEGER NOT NULL REFERENCES trips(id),
+        paid_by_member_id INTEGER NOT NULL REFERENCES trip_members(id),
+        amount INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT '기타',
+        date TEXT NOT NULL,
+        split_type TEXT NOT NULL DEFAULT 'equal',
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE TABLE IF NOT EXISTS trip_expense_splits (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        expense_id INTEGER NOT NULL REFERENCES trip_expenses(id),
+        member_id INTEGER NOT NULL REFERENCES trip_members(id),
+        share_amount INTEGER NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_trip_expenses_trip ON trip_expenses(trip_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_trip_splits_expense ON trip_expense_splits(expense_id)`,
+      `CREATE TABLE IF NOT EXISTS trip_funds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        trip_id INTEGER NOT NULL REFERENCES trips(id),
+        member_id INTEGER NOT NULL REFERENCES trip_members(id),
+        amount INTEGER NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_trip_funds_trip ON trip_funds(trip_id)`,
     ],
     "write"
   );
 
   // 기존 테이블에 신규 컬럼 추가 (이미 있으면 무시)
   const migrations = [
+    "ALTER TABLE trips ADD COLUMN currency TEXT NOT NULL DEFAULT 'KRW'",
     "ALTER TABLE transactions ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
     "ALTER TABLE assets ADD COLUMN visibility TEXT NOT NULL DEFAULT 'family'",
     "ALTER TABLE transactions ADD COLUMN card_name TEXT NOT NULL DEFAULT ''",
@@ -1032,4 +1082,450 @@ export async function deleteWebAuthnCredentialsByUserId(userId: number) {
     sql: "DELETE FROM webauthn_credentials WHERE user_id = ?",
     args: [userId],
   });
+}
+
+// ── Trips ──
+export interface TripMemberRow {
+  id: number;
+  trip_id: number;
+  user_id: number | null;
+  guest_name: string;
+  name: string; // resolved: user name or guest_name
+  role: string;
+  is_guest: boolean;
+  joined_at: string;
+}
+
+export async function createTrip(
+  name: string,
+  destination: string,
+  startDate: string,
+  endDate: string,
+  description: string,
+  ownerId: number,
+  currency: string = "KRW"
+) {
+  await ensureInit();
+  const inviteCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const r = await client.execute({
+    sql: "INSERT INTO trips (name, destination, start_date, end_date, description, currency, invite_code, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [name, destination, startDate, endDate, description, currency, inviteCode, ownerId],
+  });
+  const tripId = Number(r.lastInsertRowid);
+  await client.execute({
+    sql: "INSERT INTO trip_members (trip_id, user_id, role) VALUES (?, ?, 'owner')",
+    args: [tripId, ownerId],
+  });
+  return tripId;
+}
+
+export async function addTripGuestMember(tripId: number, guestName: string) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "INSERT INTO trip_members (trip_id, guest_name, role) VALUES (?, ?, 'member')",
+    args: [tripId, guestName],
+  });
+  return Number(r.lastInsertRowid);
+}
+
+export async function joinTrip(inviteCode: string, userId: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT id FROM trips WHERE invite_code = ?",
+    args: [inviteCode.toUpperCase()],
+  });
+  if (!r.rows[0]) return null;
+  const tripId = Number(r.rows[0]["id"]);
+  try {
+    await client.execute({
+      sql: "INSERT INTO trip_members (trip_id, user_id, role) VALUES (?, ?, 'member')",
+      args: [tripId, userId],
+    });
+  } catch { /* already member */ }
+  return tripId;
+}
+
+export async function getTripsByUser(userId: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: `SELECT t.* FROM trips t
+          JOIN trip_members tm ON t.id = tm.trip_id
+          WHERE tm.user_id = ?
+          ORDER BY t.start_date DESC`,
+    args: [userId],
+  });
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    name: String(row["name"]),
+    destination: String(row["destination"]),
+    start_date: String(row["start_date"]),
+    end_date: String(row["end_date"]),
+    description: String(row["description"]),
+    currency: String(row["currency"] || "KRW"),
+    invite_code: String(row["invite_code"]),
+    owner_id: Number(row["owner_id"]),
+    created_at: String(row["created_at"]),
+  }));
+}
+
+export async function getTripById(tripId: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT * FROM trips WHERE id = ?",
+    args: [tripId],
+  });
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return {
+    id: Number(row["id"]),
+    name: String(row["name"]),
+    destination: String(row["destination"]),
+    start_date: String(row["start_date"]),
+    end_date: String(row["end_date"]),
+    description: String(row["description"]),
+    currency: String(row["currency"] || "KRW"),
+    invite_code: String(row["invite_code"]),
+    owner_id: Number(row["owner_id"]),
+    created_at: String(row["created_at"]),
+  };
+}
+
+export async function updateTrip(
+  tripId: number,
+  userId: number,
+  data: { name?: string; destination?: string; start_date?: string; end_date?: string; description?: string; currency?: string }
+) {
+  await ensureInit();
+  const trip = await getTripById(tripId);
+  if (!trip || trip.owner_id !== userId) return false;
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+  if (data.name !== undefined) { sets.push("name = ?"); args.push(data.name); }
+  if (data.destination !== undefined) { sets.push("destination = ?"); args.push(data.destination); }
+  if (data.start_date !== undefined) { sets.push("start_date = ?"); args.push(data.start_date); }
+  if (data.end_date !== undefined) { sets.push("end_date = ?"); args.push(data.end_date); }
+  if (data.description !== undefined) { sets.push("description = ?"); args.push(data.description); }
+  if (data.currency !== undefined) { sets.push("currency = ?"); args.push(data.currency); }
+  if (sets.length === 0) return true;
+  args.push(tripId);
+  await client.execute({
+    sql: `UPDATE trips SET ${sets.join(", ")} WHERE id = ?`,
+    args,
+  });
+  return true;
+}
+
+export async function getTripMembers(tripId: number): Promise<TripMemberRow[]> {
+  await ensureInit();
+  const r = await client.execute({
+    sql: `SELECT tm.id, tm.trip_id, tm.user_id, tm.guest_name, tm.role, tm.joined_at,
+            COALESCE(u.name, tm.guest_name) as name,
+            CASE WHEN tm.user_id IS NULL THEN 1 ELSE 0 END as is_guest
+          FROM trip_members tm
+          LEFT JOIN users u ON tm.user_id = u.id
+          WHERE tm.trip_id = ?
+          ORDER BY tm.joined_at`,
+    args: [tripId],
+  });
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    trip_id: Number(row["trip_id"]),
+    user_id: row["user_id"] ? Number(row["user_id"]) : null,
+    guest_name: String(row["guest_name"] || ""),
+    name: String(row["name"]),
+    role: String(row["role"]),
+    is_guest: Number(row["is_guest"]) === 1,
+    joined_at: String(row["joined_at"]),
+  }));
+}
+
+export async function isTripMember(tripId: number, userId: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT 1 FROM trip_members WHERE trip_id = ? AND user_id = ?",
+    args: [tripId, userId],
+  });
+  return r.rows.length > 0;
+}
+
+export async function deleteTripMember(memberId: number) {
+  await ensureInit();
+  // 해당 멤버의 splits와 expenses는 별도 처리 필요
+  await client.execute({
+    sql: "DELETE FROM trip_members WHERE id = ?",
+    args: [memberId],
+  });
+}
+
+export async function addTripExpense(
+  tripId: number,
+  paidByMemberId: number,
+  amount: number,
+  description: string,
+  category: string,
+  date: string,
+  splitType: string,
+  splits: { memberId: number; shareAmount: number }[]
+) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "INSERT INTO trip_expenses (trip_id, paid_by_member_id, amount, description, category, date, split_type) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    args: [tripId, paidByMemberId, amount, description, category, date, splitType],
+  });
+  const expenseId = Number(r.lastInsertRowid);
+  for (const s of splits) {
+    await client.execute({
+      sql: "INSERT INTO trip_expense_splits (expense_id, member_id, share_amount) VALUES (?, ?, ?)",
+      args: [expenseId, s.memberId, s.shareAmount],
+    });
+  }
+  return expenseId;
+}
+
+export async function getTripExpenses(tripId: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: `SELECT te.*, COALESCE(u.name, tm.guest_name) as paid_by_name
+          FROM trip_expenses te
+          JOIN trip_members tm ON te.paid_by_member_id = tm.id
+          LEFT JOIN users u ON tm.user_id = u.id
+          WHERE te.trip_id = ?
+          ORDER BY te.date DESC, te.id DESC`,
+    args: [tripId],
+  });
+  const expenses: Array<{
+    id: number;
+    trip_id: number;
+    paid_by_member_id: number;
+    paid_by_name: string;
+    amount: number;
+    description: string;
+    category: string;
+    date: string;
+    split_type: string;
+    created_at: string;
+    splits: Array<{ member_id: number; user_name: string; share_amount: number }>;
+  }> = r.rows.map((row) => ({
+    id: Number(row["id"]),
+    trip_id: Number(row["trip_id"]),
+    paid_by_member_id: Number(row["paid_by_member_id"]),
+    paid_by_name: String(row["paid_by_name"]),
+    amount: Number(row["amount"]),
+    description: String(row["description"]),
+    category: String(row["category"]),
+    date: String(row["date"]),
+    split_type: String(row["split_type"]),
+    created_at: String(row["created_at"]),
+    splits: [],
+  }));
+
+  // 각 지출의 분할 정보 로드
+  for (const exp of expenses) {
+    const sr = await client.execute({
+      sql: `SELECT tes.member_id, tes.share_amount, COALESCE(u.name, tm.guest_name) as user_name
+            FROM trip_expense_splits tes
+            JOIN trip_members tm ON tes.member_id = tm.id
+            LEFT JOIN users u ON tm.user_id = u.id
+            WHERE tes.expense_id = ?`,
+      args: [exp.id],
+    });
+    exp.splits = sr.rows.map((row) => ({
+      member_id: Number(row["member_id"]),
+      user_name: String(row["user_name"]),
+      share_amount: Number(row["share_amount"]),
+    }));
+  }
+
+  return expenses;
+}
+
+export async function updateTripExpense(
+  expenseId: number,
+  data: {
+    paid_by_member_id?: number;
+    amount?: number;
+    description?: string;
+    category?: string;
+    date?: string;
+    split_type?: string;
+    splits?: { memberId: number; shareAmount: number }[];
+  }
+) {
+  await ensureInit();
+  const sets: string[] = [];
+  const args: (string | number)[] = [];
+  if (data.paid_by_member_id !== undefined) { sets.push("paid_by_member_id = ?"); args.push(data.paid_by_member_id); }
+  if (data.amount !== undefined) { sets.push("amount = ?"); args.push(data.amount); }
+  if (data.description !== undefined) { sets.push("description = ?"); args.push(data.description); }
+  if (data.category !== undefined) { sets.push("category = ?"); args.push(data.category); }
+  if (data.date !== undefined) { sets.push("date = ?"); args.push(data.date); }
+  if (data.split_type !== undefined) { sets.push("split_type = ?"); args.push(data.split_type); }
+  if (sets.length > 0) {
+    args.push(expenseId);
+    await client.execute({ sql: `UPDATE trip_expenses SET ${sets.join(", ")} WHERE id = ?`, args });
+  }
+  // splits가 있으면 기존 것 삭제 후 재삽입
+  if (data.splits) {
+    await client.execute({ sql: "DELETE FROM trip_expense_splits WHERE expense_id = ?", args: [expenseId] });
+    for (const s of data.splits) {
+      await client.execute({
+        sql: "INSERT INTO trip_expense_splits (expense_id, member_id, share_amount) VALUES (?, ?, ?)",
+        args: [expenseId, s.memberId, s.shareAmount],
+      });
+    }
+  }
+}
+
+export async function deleteTripExpense(expenseId: number) {
+  await ensureInit();
+  await client.execute({
+    sql: "DELETE FROM trip_expense_splits WHERE expense_id = ?",
+    args: [expenseId],
+  });
+  await client.execute({
+    sql: "DELETE FROM trip_expenses WHERE id = ?",
+    args: [expenseId],
+  });
+}
+
+export async function deleteTrip(tripId: number, userId: number) {
+  await ensureInit();
+  const trip = await getTripById(tripId);
+  if (!trip || trip.owner_id !== userId) return false;
+  await client.execute({ sql: "DELETE FROM trip_expense_splits WHERE expense_id IN (SELECT id FROM trip_expenses WHERE trip_id = ?)", args: [tripId] });
+  await client.execute({ sql: "DELETE FROM trip_expenses WHERE trip_id = ?", args: [tripId] });
+  await client.execute({ sql: "DELETE FROM trip_members WHERE trip_id = ?", args: [tripId] });
+  await client.execute({ sql: "DELETE FROM trips WHERE id = ?", args: [tripId] });
+  return true;
+}
+
+export interface SettlementEntry {
+  from_member_id: number;
+  from_member_name: string;
+  to_member_id: number;
+  to_member_name: string;
+  amount: number;
+}
+
+export async function getTripSettlement(tripId: number): Promise<SettlementEntry[]> {
+  await ensureInit();
+  const members = await getTripMembers(tripId);
+  const expenses = await getTripExpenses(tripId);
+
+  // 각 멤버의 paid / share 계산 (member.id 기준)
+  const balances: Record<number, { paid: number; share: number; name: string }> = {};
+  for (const m of members) {
+    balances[m.id] = { paid: 0, share: 0, name: m.name };
+  }
+
+  for (const exp of expenses) {
+    balances[exp.paid_by_member_id].paid += exp.amount;
+    for (const s of exp.splits) {
+      balances[s.member_id].share += s.share_amount;
+    }
+  }
+
+  // 차액 계산: 양수 = 받을 돈, 음수 = 줄 돈
+  const diffs: { memberId: number; name: string; diff: number }[] = Object.entries(balances).map(
+    ([mid, b]) => ({ memberId: Number(mid), name: b.name, diff: b.paid - b.share })
+  );
+
+  // 최소 트랜잭션 정산
+  const creditors = diffs.filter((d) => d.diff > 0).sort((a, b) => b.diff - a.diff);
+  const debtors = diffs.filter((d) => d.diff < 0).sort((a, b) => a.diff - b.diff);
+
+  const result: SettlementEntry[] = [];
+  let i = 0, j = 0;
+  while (i < creditors.length && j < debtors.length) {
+    const credit = creditors[i];
+    const debit = debtors[j];
+    const amount = Math.min(credit.diff, -debit.diff);
+    if (amount > 0) {
+      result.push({
+        from_member_id: debit.memberId,
+        from_member_name: debit.name,
+        to_member_id: credit.memberId,
+        to_member_name: credit.name,
+        amount,
+      });
+    }
+    credit.diff -= amount;
+    debit.diff += amount;
+    if (credit.diff <= 0) i++;
+    if (debit.diff >= 0) j++;
+  }
+
+  return result;
+}
+
+export async function getTripSettlementSummary(tripId: number) {
+  await ensureInit();
+  const members = await getTripMembers(tripId);
+  const expenses = await getTripExpenses(tripId);
+
+  const balances: Record<number, { paid: number; share: number; name: string }> = {};
+  for (const m of members) {
+    balances[m.id] = { paid: 0, share: 0, name: m.name };
+  }
+
+  let totalExpense = 0;
+  for (const exp of expenses) {
+    balances[exp.paid_by_member_id].paid += exp.amount;
+    totalExpense += exp.amount;
+    for (const s of exp.splits) {
+      balances[s.member_id].share += s.share_amount;
+    }
+  }
+
+  return {
+    totalExpense,
+    members: Object.entries(balances).map(([mid, b]) => ({
+      memberId: Number(mid),
+      name: b.name,
+      paid: b.paid,
+      share: b.share,
+      balance: b.paid - b.share,
+    })),
+  };
+}
+
+// ── Trip Funds (공금) ──
+export async function addTripFund(tripId: number, memberId: number, amount: number, note: string) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "INSERT INTO trip_funds (trip_id, member_id, amount, note) VALUES (?, ?, ?, ?)",
+    args: [tripId, memberId, amount, note || ""],
+  });
+  return Number(r.lastInsertRowid);
+}
+
+export async function getTripFunds(tripId: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: `SELECT tf.*, COALESCE(u.name, tm.guest_name) as member_name
+          FROM trip_funds tf
+          JOIN trip_members tm ON tf.member_id = tm.id
+          LEFT JOIN users u ON tm.user_id = u.id
+          WHERE tf.trip_id = ?
+          ORDER BY tf.created_at`,
+    args: [tripId],
+  });
+  return r.rows.map((row) => ({
+    id: Number(row["id"]),
+    trip_id: Number(row["trip_id"]),
+    member_id: Number(row["member_id"]),
+    member_name: String(row["member_name"]),
+    amount: Number(row["amount"]),
+    note: String(row["note"]),
+    created_at: String(row["created_at"]),
+  }));
+}
+
+export async function getTotalFunds(tripId: number) {
+  await ensureInit();
+  const r = await client.execute({
+    sql: "SELECT COALESCE(SUM(amount), 0) as total FROM trip_funds WHERE trip_id = ?",
+    args: [tripId],
+  });
+  return Number(r.rows[0]["total"]);
 }
